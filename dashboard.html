@@ -1170,9 +1170,8 @@
         subjectMarks = smData || [];
       }
 
-      let grandTotalObtained = 0;
-      let grandTotalFull = 0;
-      let rowsHtml = "";
+            let grandTotalObtained = 0;
+            let rowsHtml = "";
 
       if (subjectMarks.length > 0) {
         rowsHtml = subjectMarks.map((sub, idx) => {
@@ -1180,16 +1179,12 @@
           const mcq = Number(sub.mcq_marks ?? 0);
           const prac = Number(sub.practical_marks ?? 0);
           const tot = Number(sub.total_marks ?? (cq + mcq + prac));
-          const full = Number(sub.full_marks ?? (Number(sub.max_cq ?? 0) + Number(sub.max_mcq ?? 0) + Number(sub.max_practical ?? 0)));
 
           grandTotalObtained += tot;
-          grandTotalFull += full;
 
-          const cqText = sub.max_cq ? `${cq}/${sub.max_cq}` : `${cq}`;
-          const mcqText = sub.max_mcq ? `${mcq}/${sub.max_mcq}` : `${mcq}`;
-          const pracText = Number(sub.max_practical ?? 0) > 0 || prac > 0
-            ? (sub.max_practical ? `${prac}/${sub.max_practical}` : `${prac}`)
-            : "-";
+          const cqText = `${cq}`;
+          const mcqText = `${mcq}`;
+          const pracText = prac > 0 ? `${prac}` : "-";
 
           return `
             <tr>
@@ -1198,7 +1193,7 @@
               <td>${escapeHtml(cqText)}</td>
               <td>${escapeHtml(mcqText)}</td>
               <td>${escapeHtml(pracText)}</td>
-              <td style="font-weight:700;">${escapeHtml(tot)}${full ? ` / ${escapeHtml(full)}` : ""}</td>
+              <td style="font-weight:700;">${escapeHtml(tot)}</td>
               <td style="font-weight:700; color:var(--primary);">${escapeHtml(sub.grade ?? "-")}</td>
             </tr>
           `;
@@ -1224,8 +1219,9 @@
       }
 
       const displayTotal = subjectMarks.length > 0
-        ? `${grandTotalObtained}${grandTotalFull ? ` / ${grandTotalFull}` : ""}`
+        ? `${grandTotalObtained}`
         : (found.total_marks ?? found.marks ?? "-");
+
 
       const displayGpa = found.gpa ?? "-";
       const displayGrade = found.grade ?? "-";
