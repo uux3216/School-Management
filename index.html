@@ -125,6 +125,21 @@
         return;
       }
 
+      const { data: preCheck, error: preErr } = await sb.rpc("check_login_blocked", {
+        p_identifier: email
+      });
+
+      if (preErr) {
+        appendLog("Sign In Guard Error", { error: preErr.message });
+        return;
+      }
+
+      if (preCheck?.blocked) {
+        await refreshSessionStatus();
+        appendLog("Sign In Blocked (Active Lockout)", preCheck);
+        return;
+      }
+
       const { data, error } = await sb.auth.signInWithPassword({ email, password });
 
       if (error) {
