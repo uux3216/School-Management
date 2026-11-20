@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EDUCORE — Multi-Role Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: #f1f5f9; color: #0f172a; margin: 0; padding: 20px; }
+    .container { max-width: 1040px; margin: 0 auto; }
+    .card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px; margin-bottom: 16px; box-shadow: 0 1px 2px rgba(0,0,0,0.03); }
+    h1, h2, h3 { margin-top: 0; color: #1e3a8a; }
+    .topbar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; }
+    .badge { display: inline-block; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; background: #dbeafe; color: #1d4ed8; }
+    .row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; align-items: center; }
+    input, select, button { padding: 10px 12px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 14px; background: #fff; }
+    input, select { flex: 1 1 180px; }
+    button { background: #1d4ed8; color: #fff; border: none; cursor: pointer; font-weight: 600; }
+    button:hover { background: #1e40af; }
+    button.secondary { background: #475569; }
+    button.success { background: #15803d; }
+    button.outline { background: #fff; color: #0f172a; border: 1px solid #cbd5e1; }
+    .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px; }
+    th, td { border: 1px solid #e2e8f0; padding: 8px 10px; text-align: left; }
+    th { background: #f8fafc; font-weight: 700; }
+    .muted { color: #64748b; font-size: 13px; }
+    .alert { padding: 10px 12px; border-radius: 8px; background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; margin-bottom: 12px; display: none; }
+    .ok { padding: 10px 12px; border-radius: 8px; background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; margin-bottom: 12px; display: none; }
+    pre { background: #0f172a; color: #e2e8f0; padding: 12px; border-radius: 8px; font-size: 12px; overflow-x: auto; max-height: 260px; white-space: pre-wrap; }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <div class="card topbar">
+      <div>
+        <h1>EDUCORE Dashboard</h1>
+        <div id="user-info" class="muted">সাইন ইন করা হয়নি</div>
+      </div>
+      <div class="row" style="margin-bottom:0;">
+        <span id="role-badge" class="badge hidden">ROLE</span>
+        <button id="btn-logout" class="secondary hidden" onclick="handleLogout()">Sign Out</button>
+      </div>
+    </div>
+
+    <div id="alert-box" class="alert"></div>
+    <div id="ok-box" class="ok"></div>
+
+    <!-- Login Card -->
+    <div id="auth-card" class="card">
+      <h2>সাইন ইন</h2>
+      <div class="row">
+        <input id="login-email" type="email" placeholder="Email" />
+        <input id="login-password" type="password" placeholder="Password" />
+        <button onclick="handleLogin()">Sign In</button>
+      </div>
+      <p class="muted">১ মিনিটে ৫ বার ভুল চেষ্টায় ১৫ মিনিটের লকআউট সক্রিয় রয়েছে।</p>
+    </div>
+
+    <!-- Main Workspace -->
+    <div id="workspace" class="hidden">
+      <!-- Scope & Search -->
+      <div class="card">
+        <h2>Tenant ও Institution স্কোপ</h2>
+        <div class="row">
+          <select id="membership-select" onchange="onMembershipChange()"></select>
+          <input id="search-input" type="text" placeholder="নাম বা আইডি দিয়ে খুঁজুন (SQLi ফিল্টার সক্রিয়)" oninput="renderTables()" />
+          <button class="success" onclick="loadWorkspaceData()">Refresh Data</button>
+        </div>
+        <div id="scope-summary" class="muted"></div>
+      </div>
+
+      <!-- Role-specific Quick Actions -->
+      <div class="card">
+        <h2>রোল অনুযায়ী অ্যাকশন ও Audit Log</h2>
+        <div class="row">
+          <button onclick="logAction('view_dashboard', 'dashboard')">Log Dashboard View</button>
+          <button class="outline" onclick="logAction('export_report_check', 'exam_results')">Log Result Review</button>
+          <span id="admin-teacher-note" class="badge hidden">Management / Staff Scope Active</span>
+          <span id="guardian-student-note" class="badge hidden">Guardian / Student Scope Active</span>
+        </div>
+      </div>
+
+      <!-- Data Tables -->
+      <div class="grid-2">
+        <div class="card">
+          <h3>Students</h3>
+          <div id="students-container" class="muted">লোড হচ্ছে...</div>
+        </div>
+        <div class="card">
+          <h3>Exam Results</h3>
+          <div id="results-container" class="muted">লোড হচ্ছে...</div>
+        </div>
+      </div>
+
+      <!-- Audit Logs Viewer -->
+      <div class="card">
+        <h3>Recent Audit Logs</h3>
+        <div id="audit-container" class="muted">লোড হচ্ছে...</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = "https://vrlvamahvvnlkpklesfw.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_20UsdfiJQqAhQqU4ui8YvQ_D-hHG_xk";
+    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const SQLI_CHAR_REGEX = /['";\\<>`]|--|\/\*|\*\/|\x00/;
+    const SQLI_KEYWORD_REGEX = /\b(union\s+select|drop\s+table|alter\s+table|insert\s+into|delete\s+from|update\s+\w+\s+set|or\s+1=1|and\s+1=1)\b/i;
+
+    let currentUser = null;
+    let memberships = [];
+    let activeMembership = null;
+    let studentsData = [];
+    let resultsData = [];
+    let auditData = [];
+
+    function showAlert(msg) {
+      const el = document.getElementById("alert-box");
+      el.textContent = msg;
+      el.style.display = "block";
+      document.getElementById("ok-box").style.display = "none";
+    }
+
+    function showOk(msg) {
+      const el = document.getElementById("ok-box");
+      el.textContent = msg;
+      el.style.display = "block";
+      document.getElementById("alert-box").style.display = "none";
+    }
+
+    function clearMessages() {
+      document.getElementById("alert-box").style.display = "none";
+      document.getElementById("ok-box").style.display = "none";
+    }
+
+    function sanitizeSearch(raw) {
+      const str = String(raw ?? "");
+      const cleaned = str
+        .replace(/['";\\<>`]/g, "")
+        .replace(/--+/g, "-")
+        .replace(/\/\*|\*\//g, "");
+      return cleaned.trim().toLowerCase();
+    }
+
+    function escapeHtml(val) {
+      return String(val ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    async function handleLogin() {
+      clearMessages();
+      const email = document.getElementById("login-email").value.trim().toLowerCase();
+      const password = document.getElementById("login-password").value;
+
+      if (!email || !password) return showAlert("Email এবং Password দিন।");
+      if (SQLI_CHAR_REGEX.test(email) || SQLI_KEYWORD_REGEX.test(email)) {
+        return showAlert("Email-এ অবৈধ স্পেশাল ক্যারেক্টার পাওয়া গেছে।");
+      }
+
+      const { data: preCheck, error: preErr } = await sb.rpc("check_login_blocked", {
+        p_identifier: email
+      });
+      if (preErr) return showAlert("গার্ড চেক ত্রুটি: " + preErr.message);
+      if (preCheck?.blocked) {
+        return showAlert(`${preCheck.message} (${preCheck.retry_after_seconds} সেকেন্ড বাকি)`);
+      }
+
+      const { data, error } = await sb.auth.signInWithPassword({ email, password });
+      if (error) {
+        const { data: guardRes } = await sb.rpc("handle_login_guard", {
+          p_identifier: email,
+          p_is_success: false
+        });
+        const rem = guardRes?.blocked
+          ? `১৫ মিনিটের জন্য ব্লক করা হয়েছে (${guardRes.retry_after_seconds}s)`
+          : `বাকি সুযোগ: ${guardRes?.remaining_attempts ?? "?"}`;
+        return showAlert(`লগইন ব্যর্থ: ${error.message} — ${rem}`);
+      }
+
+      await sb.rpc("handle_login_guard", {
+        p_identifier: email,
+        p_is_success: true
+      });
+
+      showOk("সফলভাবে সাইন ইন হয়েছে!");
+      await initSession();
+    }
+
+    async function handleLogout() {
+      await sb.auth.signOut();
+      currentUser = null;
+      memberships = [];
+      activeMembership = null;
+      document.getElementById("workspace").classList.add("hidden");
+      document.getElementById("auth-card").classList.remove("hidden");
+      document.getElementById("btn-logout").classList.add("hidden");
+      document.getElementById("role-badge").classList.add("hidden");
+      document.getElementById("user-info").textContent = "সাইন ইন করা হয়নি";
+      clearMessages();
+    }
+
+    async function initSession() {
+      const { data: { session } } = await sb.auth.getSession();
+      if (!session) return;
+
+      currentUser = session.user;
+      document.getElementById("user-info").textContent = `${currentUser.email} (${currentUser.id})`;
+      document.getElementById("auth-card").classList.add("hidden");
+      document.getElementById("workspace").classList.remove("hidden");
+      document.getElementById("btn-logout").classList.remove("hidden");
+
+      await loadMemberships();
+    }
+
+    async function loadMemberships() {
+      const { data, error } = await sb
+        .from("tenant_memberships")
+        .select("*")
+        .eq("user_id", currentUser.id);
+
+      if (error) {
+        showAlert("Membership লোড করতে সমস্যা: " + error.message);
+        return;
+      }
+
+      memberships = (data || []).filter(m => m.is_active !== false);
+      const sel = document.getElementById("membership-select");
+      sel.innerHTML = "";
+
+      if (memberships.length === 0) {
+        showAlert("এই ইউজারের কোনো সক্রিয় Tenant Membership পাওয়া যায়নি।");
+        return;
+      }
+
+      memberships.forEach((m, idx) => {
+        const opt = document.createElement("option");
+        opt.value = idx;
+        const roleLabel = m.role || "member";
+        const instShort = m.institution_id ? m.institution_id.slice(0, 8) : "all-inst";
+        opt.textContent = `${roleLabel.toUpperCase()} — Tenant: ${m.tenant_id.slice(0, 8)} (${instShort})`;
+        sel.appendChild(opt);
+      });
+
+      sel.value = "0";
+      await onMembershipChange();
+    }
+
+    async function onMembershipChange() {
+      const idx = Number(document.getElementById("membership-select").value || 0);
+      activeMembership = memberships[idx] || null;
+      if (!activeMembership) return;
+
+      const role = String(activeMembership.role || "member").toLowerCase();
+      const badge = document.getElementById("role-badge");
+      badge.textContent = role.toUpperCase();
+      badge.classList.remove("hidden");
+
+      const isStaff = ["tenant_owner", "institution_admin", "admin", "teacher", "staff", "accountant"].includes(role);
+      document.getElementById("admin-teacher-note").classList.toggle("hidden", !isStaff);
+      document.getElementById("guardian-student-note").classList.toggle("hidden", isStaff);
+
+      document.getElementById("scope-summary").textContent =
+        `Active Tenant: ${activeMembership.tenant_id} | Institution: ${activeMembership.institution_id || "All"} | Role: ${role}`;
+
+      await loadWorkspaceData();
+    }
+
+    async function loadWorkspaceData() {
+      if (!activeMembership) return;
+
+      let stQuery = sb.from("students").select("*").eq("tenant_id", activeMembership.tenant_id);
+      let resQuery = sb.from("exam_results").select("*").eq("tenant_id", activeMembership.tenant_id);
+      let audQuery = sb.from("audit_logs").select("*").eq("tenant_id", activeMembership.tenant_id).limit(15);
+
+      if (activeMembership.institution_id) {
+        stQuery = stQuery.eq("institution_id", activeMembership.institution_id);
+        resQuery = resQuery.eq("institution_id", activeMembership.institution_id);
+      }
+
+      const [stResp, resResp, audResp] = await Promise.all([stQuery, resQuery, audQuery]);
+
+      studentsData = stResp.error ? [] : (stResp.data || []);
+      resultsData = resResp.error ? [] : (resResp.data || []);
+      auditData = audResp.error ? [] : (audResp.data || []);
+
+      if (stResp.error) showAlert("Students Error: " + stResp.error.message);
+      if (resResp.error) showAlert("Exam Results Error: " + resResp.error.message);
+
+      renderTables();
+      renderAuditLogs();
+    }
+
+    function buildDynamicTable(rows, maxCols = 5) {
+      if (!rows || rows.length === 0) {
+        return `<p class="muted">কোনো ডেটা পাওয়া যায়নি।</p>`;
+      }
+      const cols = Object.keys(rows[0]).slice(0, maxCols);
+      const thead = `<tr>${cols.map(c => `<th>${escapeHtml(c)}</th>`).join("")}</tr>`;
+      const tbody = rows.map(r =>
+        `<tr>${cols.map(c => `<td>${escapeHtml(typeof r[c] === "object" && r[c] !== null ? JSON.stringify(r[c]) : r[c])}</td>`).join("")}</tr>`
+      ).join("");
+      return `<table><thead>${thead}</thead><tbody>${tbody}</tbody></table>`;
+    }
+
+    function renderTables() {
+      const rawSearch = document.getElementById("search-input").value;
+      const q = sanitizeSearch(rawSearch);
+
+      const filterFn = (row) => {
+        if (!q) return true;
+        return Object.values(row).some(v => String(v ?? "").toLowerCase().includes(q));
+      };
+
+      document.getElementById("students-container").innerHTML =
+        buildDynamicTable(studentsData.filter(filterFn), 5);
+
+      document.getElementById("results-container").innerHTML =
+        buildDynamicTable(resultsData.filter(filterFn), 5);
+    }
+
+    function renderAuditLogs() {
+      if (!auditData || auditData.length === 0) {
+        document.getElementById("audit-container").innerHTML = `<p class="muted">কোনো অডিট লগ নেই বা দেখার অনুমতি সীমিত।</p>`;
+        return;
+      }
+      document.getElementById("audit-container").innerHTML = buildDynamicTable(auditData, 6);
+    }
+
+    async function logAction(action, entityName) {
+      if (!currentUser || !activeMembership) return;
+      const { error } = await sb.from("audit_logs").insert({
+        tenant_id: activeMembership.tenant_id,
+        institution_id: activeMembership.institution_id ?? null,
+        actor_user_id: currentUser.id,
+        action,
+        entity_name: entityName,
+        metadata: { role: activeMembership.role, ui: "multi_role_dashboard" }
+      });
+
+      if (error) {
+        showAlert("Audit Log Insert ব্যর্থ: " + error.message);
+      } else {
+        showOk(`Audit Log সংরক্ষিত হয়েছে: ${action}`);
+        await loadWorkspaceData();
+      }
+    }
+
+    initSession();
+  </script>
+</body>
+</html>
