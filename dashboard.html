@@ -7,36 +7,47 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     * { box-sizing: border-box; }
-    body { font-family: system-ui, -apple-system, sans-serif; background: #f1f5f9; color: #0f172a; margin: 0; padding: 20px; }
-    .container { max-width: 1040px; margin: 0 auto; }
-    .card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px; margin-bottom: 16px; box-shadow: 0 1px 2px rgba(0,0,0,0.03); }
+    body { font-family: system-ui, -apple-system, sans-serif; background: #f1f5f9; color: #0f172a; margin: 0; padding: 14px; }
+    .container { max-width: 1080px; margin: 0 auto; }
+    .card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin-bottom: 14px; box-shadow: 0 1px 2px rgba(0,0,0,0.03); min-width: 0; }
     h1, h2, h3 { margin-top: 0; color: #1e3a8a; }
-    .topbar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; }
+    .topbar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; }
     .badge { display: inline-block; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; background: #dbeafe; color: #1d4ed8; }
-    .row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; align-items: center; }
-    input, select, button { padding: 10px 12px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 14px; background: #fff; }
-    input, select { flex: 1 1 180px; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; align-items: center; }
+    input, select, button { padding: 10px 12px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 14px; background: #fff; max-width: 100%; }
+    input, select { flex: 1 1 180px; min-width: 0; }
     button { background: #1d4ed8; color: #fff; border: none; cursor: pointer; font-weight: 600; }
     button:hover { background: #1e40af; }
     button.secondary { background: #475569; }
     button.success { background: #15803d; }
     button.outline { background: #fff; color: #0f172a; border: 1px solid #cbd5e1; }
-    .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
-    table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px; }
-    th, td { border: 1px solid #e2e8f0; padding: 8px 10px; text-align: left; }
+    .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; }
+    .table-wrap { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1px solid #e2e8f0; border-radius: 8px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 540px; }
+    th, td { border-bottom: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; padding: 8px 10px; text-align: left; white-space: nowrap; }
+    th:last-child, td:last-child { border-right: none; }
+    tr:last-child td { border-bottom: none; }
     th { background: #f8fafc; font-weight: 700; }
-    .muted { color: #64748b; font-size: 13px; }
+    .guardian-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin-top: 8px; }
+    .info-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; }
+    .info-title { font-size: 12px; color: #64748b; margin-bottom: 4px; }
+    .info-value { font-size: 15px; font-weight: 700; color: #0f172a; word-break: break-word; }
+    .muted { color: #64748b; font-size: 13px; overflow-wrap: anywhere; }
     .alert { padding: 10px 12px; border-radius: 8px; background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; margin-bottom: 12px; display: none; }
     .ok { padding: 10px 12px; border-radius: 8px; background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; margin-bottom: 12px; display: none; }
-    pre { background: #0f172a; color: #e2e8f0; padding: 12px; border-radius: 8px; font-size: 12px; overflow-x: auto; max-height: 260px; white-space: pre-wrap; }
     .hidden { display: none !important; }
+    @media (max-width: 480px) {
+      body { padding: 10px; }
+      .card { padding: 14px; }
+      .grid-2 { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
   <div class="container">
     <!-- Header -->
     <div class="card topbar">
-      <div>
+      <div style="min-width:0;">
         <h1>EDUCORE Dashboard</h1>
         <div id="user-info" class="muted">সাইন ইন করা হয়নি</div>
       </div>
@@ -82,6 +93,12 @@
           <span id="admin-teacher-note" class="badge hidden">Management / Staff Scope Active</span>
           <span id="guardian-student-note" class="badge hidden">Guardian / Student Scope Active</span>
         </div>
+      </div>
+
+      <!-- Guardian Clean Overview -->
+      <div id="guardian-panel" class="card hidden">
+        <h3>অভিভাবক ও শিক্ষার্থীর সারসংক্ষেপ</h3>
+        <div id="guardian-summary-boxes" class="guardian-summary"></div>
       </div>
 
       <!-- Data Tables -->
@@ -155,6 +172,17 @@
         .replace(/"/g, "&quot;");
     }
 
+    function formatCellValue(key, val) {
+      if (val === null || val === undefined) return "-";
+      if (typeof val === "object") return JSON.stringify(val);
+      const str = String(val);
+      // UUID বা খুব লম্বা আইডি হলে সংক্ষিপ্ত করে দেখানো
+      if ((key === "id" || key.endsWith("_id") || key.endsWith("_uid")) && str.length > 18) {
+        return `${str.slice(0, 8)}…${str.slice(-4)}`;
+      }
+      return str;
+    }
+
     async function handleLogin() {
       clearMessages();
       const email = document.getElementById("login-email").value.trim().toLowerCase();
@@ -200,6 +228,7 @@
       memberships = [];
       activeMembership = null;
       document.getElementById("workspace").classList.add("hidden");
+      document.getElementById("guardian-panel").classList.add("hidden");
       document.getElementById("auth-card").classList.remove("hidden");
       document.getElementById("btn-logout").classList.add("hidden");
       document.getElementById("role-badge").classList.add("hidden");
@@ -212,7 +241,7 @@
       if (!session) return;
 
       currentUser = session.user;
-      document.getElementById("user-info").textContent = `${currentUser.email} (${currentUser.id})`;
+      document.getElementById("user-info").textContent = `${currentUser.email} (${currentUser.id.slice(0, 8)}…)`;
       document.getElementById("auth-card").classList.add("hidden");
       document.getElementById("workspace").classList.remove("hidden");
       document.getElementById("btn-logout").classList.remove("hidden");
@@ -264,11 +293,14 @@
       badge.classList.remove("hidden");
 
       const isStaff = ["tenant_owner", "institution_admin", "admin", "teacher", "staff", "accountant"].includes(role);
+      const isGuardianOrStudent = ["guardian", "student"].includes(role);
+
       document.getElementById("admin-teacher-note").classList.toggle("hidden", !isStaff);
       document.getElementById("guardian-student-note").classList.toggle("hidden", isStaff);
+      document.getElementById("guardian-panel").classList.toggle("hidden", !isGuardianOrStudent);
 
       document.getElementById("scope-summary").textContent =
-        `Active Tenant: ${activeMembership.tenant_id} | Institution: ${activeMembership.institution_id || "All"} | Role: ${role}`;
+        `Tenant: ${activeMembership.tenant_id.slice(0, 8)}… | Institution: ${activeMembership.institution_id ? activeMembership.institution_id.slice(0, 8) + "…" : "All"} | Role: ${role}`;
 
       await loadWorkspaceData();
     }
@@ -294,20 +326,52 @@
       if (stResp.error) showAlert("Students Error: " + stResp.error.message);
       if (resResp.error) showAlert("Exam Results Error: " + resResp.error.message);
 
+      renderGuardianSummary();
       renderTables();
       renderAuditLogs();
     }
 
-    function buildDynamicTable(rows, maxCols = 5) {
+    function renderGuardianSummary() {
+      const role = String(activeMembership?.role || "").toLowerCase();
+      if (!["guardian", "student"].includes(role)) return;
+
+      const firstStudent = studentsData[0] || {};
+      const studentName = firstStudent.full_name || firstStudent.name || "তথ্য পাওয়া যায়নি";
+      const studentCode = firstStudent.student_uid || firstStudent.roll_no || firstStudent.id || "-";
+      const latestExam = resultsData[0]?.exam_name || resultsData[0]?.title || "ফলাফল তালিকা নিচে দেখুন";
+
+      document.getElementById("guardian-summary-boxes").innerHTML = `
+        <div class="info-box">
+          <div class="info-title">শিক্ষার্থীর নাম</div>
+          <div class="info-value">${escapeHtml(studentName)}</div>
+        </div>
+        <div class="info-box">
+          <div class="info-title">স্টুডেন্ট আইডি</div>
+          <div class="info-value">${escapeHtml(studentCode)}</div>
+        </div>
+        <div class="info-box">
+          <div class="info-title">সর্বশেষ পরীক্ষা</div>
+          <div class="info-value">${escapeHtml(latestExam)}</div>
+        </div>
+      `;
+    }
+
+    function buildDynamicTable(rows, preferredCols = [], maxCols = 5) {
       if (!rows || rows.length === 0) {
         return `<p class="muted">কোনো ডেটা পাওয়া যায়নি।</p>`;
       }
-      const cols = Object.keys(rows[0]).slice(0, maxCols);
-      const thead = `<tr>${cols.map(c => `<th>${escapeHtml(c)}</th>`).join("")}</tr>`;
+      const allKeys = Object.keys(rows[0]);
+      const orderedKeys = [
+        ...preferredCols.filter(k => allKeys.includes(k)),
+        ...allKeys.filter(k => !preferredCols.includes(k))
+      ].slice(0, maxCols);
+
+      const thead = `<tr>${orderedKeys.map(c => `<th>${escapeHtml(c)}</th>`).join("")}</tr>`;
       const tbody = rows.map(r =>
-        `<tr>${cols.map(c => `<td>${escapeHtml(typeof r[c] === "object" && r[c] !== null ? JSON.stringify(r[c]) : r[c])}</td>`).join("")}</tr>`
+        `<tr>${orderedKeys.map(c => `<td title="${escapeHtml(r[c] ?? "")}">${escapeHtml(formatCellValue(c, r[c]))}</td>`).join("")}</tr>`
       ).join("");
-      return `<table><thead>${thead}</thead><tbody>${tbody}</tbody></table>`;
+
+      return `<div class="table-wrap"><table><thead>${thead}</thead><tbody>${tbody}</tbody></table></div>`;
     }
 
     function renderTables() {
@@ -320,10 +384,18 @@
       };
 
       document.getElementById("students-container").innerHTML =
-        buildDynamicTable(studentsData.filter(filterFn), 5);
+        buildDynamicTable(
+          studentsData.filter(filterFn),
+          ["full_name", "name", "student_uid", "roll_no", "id"],
+          5
+        );
 
       document.getElementById("results-container").innerHTML =
-        buildDynamicTable(resultsData.filter(filterFn), 5);
+        buildDynamicTable(
+          resultsData.filter(filterFn),
+          ["exam_name", "subject", "marks", "grade", "enrollment_id"],
+          5
+        );
     }
 
     function renderAuditLogs() {
@@ -331,7 +403,11 @@
         document.getElementById("audit-container").innerHTML = `<p class="muted">কোনো অডিট লগ নেই বা দেখার অনুমতি সীমিত।</p>`;
         return;
       }
-      document.getElementById("audit-container").innerHTML = buildDynamicTable(auditData, 6);
+      document.getElementById("audit-container").innerHTML = buildDynamicTable(
+        auditData,
+        ["action", "entity_name", "actor_user_id", "created_at", "id"],
+        5
+      );
     }
 
     async function logAction(action, entityName) {
