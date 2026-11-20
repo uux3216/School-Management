@@ -63,7 +63,7 @@
     const NORTH_TENANT_ID = "11111111-1111-1111-1111-111111111111";
     const NORTH_INST_ID = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
 
-    const SQLI_CHAR_REGEX = /['";\\<>`]|--|\*/|/\*|\x00/g;
+    const SQLI_CHAR_REGEX = /['";\\<>`]|--|\/\*|\*\/|\x00/;
     const SQLI_KEYWORD_REGEX = /\b(union\s+select|drop\s+table|alter\s+table|insert\s+into|delete\s+from|update\s+\w+\s+set|or\s+1=1|and\s+1=1)\b/i;
 
     function sanitizeInput(rawValue) {
