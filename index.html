@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EDUCORE — RLS, Brute-Force & Input Guard Test</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body { font-family: system-ui, sans-serif; background: #f8fafc; color: #0f172a; margin: 0; padding: 20px; }
+    .card { max-width: 780px; margin: 0 auto 18px; background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px; }
+    h1, h2 { color: #1d4ed8; margin-top: 0; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+    input, button { padding: 10px 12px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 14px; }
+    input { flex: 1 1 200px; }
+    button { background: #1d4ed8; color: #fff; border: none; cursor: pointer; font-weight: 600; }
+    button.secondary { background: #475569; }
+    button.success { background: #15803d; }
+    button.danger { background: #b91c1c; }
+    button.outline { background: #fff; color: #0f172a; border: 1px solid #cbd5e1; }
+    pre { background: #0f172a; color: #e2e8f0; padding: 14px; border-radius: 8px; overflow-x: auto; font-size: 12px; line-height: 1.5; max-height: 520px; white-space: pre-wrap; word-break: break-word; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>EDUCORE — Auth, Brute-Force & RLS Test</h1>
+    <div class="row">
+      <input id="email" type="email" placeholder="User Email" />
+      <input id="password" type="password" placeholder="Password" />
+      <button onclick="signIn()">Sign In</button>
+      <button class="secondary" onclick="signOut()">Sign Out</button>
+    </div>
+    <p id="session-status">Status: Signed out</p>
+  </div>
+
+  <div class="card">
+    <h2>Input Sanitizer Test (SQLi Special Chars)</h2>
+    <div class="row">
+      <input id="test-input" type="text" placeholder="যেমন: admin' OR 1=1; --" />
+      <button class="outline" onclick="testSanitizer()">Test Sanitize</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>RLS & Isolation Checks (Append Logs)</h2>
+    <div class="row">
+      <button class="success" onclick="runAllChecks()">Run All Checks</button>
+      <button onclick="fetchTenants()">1. My Tenants</button>
+      <button onclick="fetchStudents()">2. Scoped Students</button>
+      <button onclick="fetchResults()">3. Visible Results</button>
+      <button class="secondary" onclick="testAuditInsert()">4. Insert Audit Log</button>
+      <button class="outline" onclick="copyLogs()">Copy All Logs</button>
+      <button class="danger" onclick="clearLogs()">Clear Logs</button>
+    </div>
+    <pre id="output">=== Log Stream Ready ===
+</pre>
+  </div>
+
+  <script>
+    const SUPABASE_URL = "https://vrlvamahvvnlkpklesfw.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_20UsdfiJQqAhQqU4ui8YvQ_D-hHG_xk";
+    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const NORTH_TENANT_ID = "11111111-1111-1111-1111-111111111111";
+    const NORTH_INST_ID = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
+
+    const SQLI_CHAR_REGEX = /['";\\<>`]|--|\/\*|\*\/|\x00/;
+    const SQLI_KEYWORD_REGEX = /\b(union\s+select|drop\s+table|alter\s+table|insert\s+into|delete\s+from|update\s+\w+\s+set|or\s+1=1|and\s+1=1)\b/i;
+
+    function sanitizeInput(rawValue) {
+      const str = String(rawValue ?? "");
+      const hasInjectionPattern = SQLI_CHAR_REGEX.test(str) || SQLI_KEYWORD_REGEX.test(str);
+      const cleaned = str
+        .replace(/['";\\<>`]/g, "")
+        .replace(/--+/g, "-")
+        .replace(/\/\*|\*\//g, "")
+        .trim();
+
+      return { original: str, cleaned, hasInjectionPattern };
+    }
+
+    let logCounter = 0;
+
+    function appendLog(title, payload) {
+      logCounter += 1;
+      const outEl = document.getElementById("output");
+      const time = new Date().toLocaleTimeString("en-GB");
+      const formatted = typeof payload === "string"
+        ? payload
+        : JSON.stringify(payload, null, 2);
+
+      const entry = `\n[${logCounter} | ${time}] ${title}\n----------------------------------------\n${formatted}\n`;
+      outEl.textContent += entry;
+      outEl.scrollTop = outEl.scrollHeight;
+    }
+
+    function clearLogs() {
+      logCounter = 0;
+      document.getElementById("output").textContent = "=== Log Stream Cleared ===\n";
+    }
+
+    function testSanitizer() {
+      const val = document.getElementById("test-input").value;
+      appendLog("Input Sanitizer Check", sanitizeInput(val));
+    }
+
+    async function refreshSessionStatus() {
+      const { data: { session } } = await sb.auth.getSession();
+      document.getElementById("session-status").textContent = session
+        ? `Status: Signed in as ${session.user.email} (${session.user.id})`
+        : "Status: Signed out";
+      return session;
+    }
+
+    async function signIn() {
+      const email = document.getElementById("email").value.trim().toLowerCase();
+      const password = document.getElementById("password").value;
+
+      if (!email || !password) {
+        appendLog("Sign In", { error: "Email এবং Password দিন" });
+        return;
+      }
+
+      if (SQLI_CHAR_REGEX.test(email) || SQLI_KEYWORD_REGEX.test(email)) {
+        appendLog("Sign In Blocked", { error: "Email-এ অবৈধ স্পেশাল ক্যারেক্টার পাওয়া গেছে!" });
+        return;
+      }
+
+      const { data: preCheck, error: preErr } = await sb.rpc("check_login_blocked", {
+        p_identifier: email
+      });
+
+      if (preErr) {
+        appendLog("Sign In Guard Error", { error: preErr.message });
+        return;
+      }
+
+      if (preCheck?.blocked) {
+        await refreshSessionStatus();
+        appendLog("Sign In Blocked (Active Lockout)", preCheck);
+        return;
+      }
+
+      const { data, error } = await sb.auth.signInWithPassword({ email, password });
+
+      if (error) {
+        const { data: guardRes, error: guardErr } = await sb.rpc("handle_login_guard", {
+          p_identifier: email,
+          p_is_success: false
+        });
+        await refreshSessionStatus();
+        appendLog("Sign In Failed", {
+          authError: error.message,
+          guard: guardErr ? { error: guardErr.message } : guardRes
+        });
+        return;
+      }
+
+      await sb.rpc("handle_login_guard", {
+        p_identifier: email,
+        p_is_success: true
+      });
+
+      await refreshSessionStatus();
+      appendLog("Sign In", { signedInUser: data.user.email, uid: data.user.id });
+    }
+
+    async function signOut() {
+      await sb.auth.signOut();
+      await refreshSessionStatus();
+      appendLog("Sign Out", { signedOut: true });
+    }
+
+    async function queryTenants() {
+      const { data, error } = await sb.from("tenants").select("*");
+      return error ? { error: error.message } : { count: data.length, rows: data };
+    }
+
+    async function queryStudents() {
+      const { data, error } = await sb.from("students").select("*");
+      return error ? { error: error.message } : { count: data.length, rows: data };
+    }
+
+    async function queryResults() {
+      const { data, error } = await sb.from("exam_results").select("*");
+      return error ? { error: error.message } : { count: data.length, rows: data };
+    }
+
+    async function queryAuditInsert() {
+      const { data: { user } } = await sb.auth.getUser();
+      if (!user) return { error: "Sign in first" };
+
+      const { data, error } = await sb.from("audit_logs").insert({
+        tenant_id: NORTH_TENANT_ID,
+        institution_id: NORTH_INST_ID,
+        actor_user_id: user.id,
+        action: "rls_append_check",
+        entity_name: "students",
+        metadata: { source: "educore_test_page" }
+      }).select();
+
+      return error ? { error: error.message } : { insertedCount: data.length, rows: data };
+    }
+
+    async function fetchTenants() {
+      appendLog("1. My Tenants", await queryTenants());
+    }
+
+    async function fetchStudents() {
+      appendLog("2. Scoped Students", await queryStudents());
+    }
+
+    async function fetchResults() {
+      appendLog("3. Visible Results", await queryResults());
+    }
+
+    async function testAuditInsert() {
+      appendLog("4. Insert Audit Log", await queryAuditInsert());
+    }
+
+    async function runAllChecks() {
+      const session = await refreshSessionStatus();
+      appendLog("Run All Checks", {
+        user: session ? { email: session.user.email, id: session.user.id } : null,
+        tenants: await queryTenants(),
+        students: await queryStudents(),
+        exam_results: await queryResults(),
+        audit_insert: await queryAuditInsert()
+      });
+    }
+
+    async function copyLogs() {
+      const text = document.getElementById("output").textContent;
+      try {
+        await navigator.clipboard.writeText(text);
+        alert("সব লগ কপি করা হয়েছে!");
+      } catch {
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+        alert("সব লগ কপি করা হয়েছে!");
+      }
+    }
+
+    refreshSessionStatus();
+  </script>
+</body>
+</html>
