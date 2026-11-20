@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>EDUCORE — RLS & Tenant Isolation Test</title>
+  <title>EDUCORE — RLS, Brute-Force & Input Guard Test</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     body { font-family: system-ui, sans-serif; background: #f8fafc; color: #0f172a; margin: 0; padding: 20px; }
@@ -22,7 +22,7 @@
 </head>
 <body>
   <div class="card">
-    <h1>EDUCORE — Auth & RLS Test</h1>
+    <h1>EDUCORE — Auth, Brute-Force & RLS Test</h1>
     <div class="row">
       <input id="email" type="email" placeholder="User Email" />
       <input id="password" type="password" placeholder="Password" />
@@ -30,6 +30,14 @@
       <button class="secondary" onclick="signOut()">Sign Out</button>
     </div>
     <p id="session-status">Status: Signed out</p>
+  </div>
+
+  <div class="card">
+    <h2>Input Sanitizer Test (SQLi Special Chars)</h2>
+    <div class="row">
+      <input id="test-input" type="text" placeholder="যেমন: admin' OR 1=1; --" />
+      <button class="outline" onclick="testSanitizer()">Test Sanitize</button>
+    </div>
   </div>
 
   <div class="card">
@@ -55,6 +63,21 @@
     const NORTH_TENANT_ID = "11111111-1111-1111-1111-111111111111";
     const NORTH_INST_ID = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
 
+    const SQLI_CHAR_REGEX = /['";\\<>`]|--|\*/|/\*|\x00/g;
+    const SQLI_KEYWORD_REGEX = /\b(union\s+select|drop\s+table|alter\s+table|insert\s+into|delete\s+from|update\s+\w+\s+set|or\s+1=1|and\s+1=1)\b/i;
+
+    function sanitizeInput(rawValue) {
+      const str = String(rawValue ?? "");
+      const hasInjectionPattern = SQLI_CHAR_REGEX.test(str) || SQLI_KEYWORD_REGEX.test(str);
+      const cleaned = str
+        .replace(/['";\\<>`]/g, "")
+        .replace(/--+/g, "-")
+        .replace(/\/\*|\*\//g, "")
+        .trim();
+
+      return { original: str, cleaned, hasInjectionPattern };
+    }
+
     let logCounter = 0;
 
     function appendLog(title, payload) {
@@ -75,6 +98,11 @@
       document.getElementById("output").textContent = "=== Log Stream Cleared ===\n";
     }
 
+    function testSanitizer() {
+      const val = document.getElementById("test-input").value;
+      appendLog("Input Sanitizer Check", sanitizeInput(val));
+    }
+
     async function refreshSessionStatus() {
       const { data: { session } } = await sb.auth.getSession();
       document.getElementById("session-status").textContent = session
@@ -84,14 +112,41 @@
     }
 
     async function signIn() {
-      const email = document.getElementById("email").value.trim();
+      const email = document.getElementById("email").value.trim().toLowerCase();
       const password = document.getElementById("password").value;
+
+      if (!email || !password) {
+        appendLog("Sign In", { error: "Email এবং Password দিন" });
+        return;
+      }
+
+      if (SQLI_CHAR_REGEX.test(email) || SQLI_KEYWORD_REGEX.test(email)) {
+        appendLog("Sign In Blocked", { error: "Email-এ অবৈধ স্পেশাল ক্যারেক্টার পাওয়া গেছে!" });
+        return;
+      }
+
       const { data, error } = await sb.auth.signInWithPassword({ email, password });
+
+      if (error) {
+        const { data: guardRes, error: guardErr } = await sb.rpc("handle_login_guard", {
+          p_identifier: email,
+          p_is_success: false
+        });
+        await refreshSessionStatus();
+        appendLog("Sign In Failed", {
+          authError: error.message,
+          guard: guardErr ? { error: guardErr.message } : guardRes
+        });
+        return;
+      }
+
+      await sb.rpc("handle_login_guard", {
+        p_identifier: email,
+        p_is_success: true
+      });
+
       await refreshSessionStatus();
-      appendLog(
-        "Sign In",
-        error ? { error: error.message } : { signedInUser: data.user.email, uid: data.user.id }
-      );
+      appendLog("Sign In", { signedInUser: data.user.email, uid: data.user.id });
     }
 
     async function signOut() {
