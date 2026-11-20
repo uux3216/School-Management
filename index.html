@@ -3,166 +3,102 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>EDUCORE — Education Management Platform</title>
+  <title>EDUCORE — RLS & Tenant Isolation Test</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
-    :root {
-      --primary: #2563EB;
-      --secondary: #1D4ED8;
-      --bg: #F8FAFC;
-      --card: #FFFFFF;
-      --border: #E2E8F0;
-      --text: #0F172A;
-      --muted: #64748B;
-    }
-
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-    }
-
-    body {
-      background-color: var(--bg);
-      color: var(--text);
-      line-height: 1.6;
-    }
-
-    header {
-      background: var(--card);
-      border-bottom: 1px solid var(--border);
-      padding: 16px 24px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .brand {
-      font-size: 20px;
-      font-weight: 700;
-      color: var(--primary);
-      letter-spacing: 0.5px;
-    }
-
-    .badge {
-      background: #EFF6FF;
-      color: var(--secondary);
-      border: 1px solid #BFDBFE;
-      padding: 4px 10px;
-      border-radius: 999px;
-      font-size: 12px;
-      font-weight: 600;
-    }
-
-    main {
-      max-width: 900px;
-      margin: 40px auto;
-      padding: 0 20px;
-    }
-
-    .hero {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 32px;
-      margin-bottom: 24px;
-    }
-
-    .hero h1 {
-      font-size: 28px;
-      margin-bottom: 10px;
-    }
-
-    .hero p {
-      color: var(--muted);
-      margin-bottom: 20px;
-    }
-
-    .btn {
-      display: inline-block;
-      background: var(--primary);
-      color: #FFFFFF;
-      text-decoration: none;
-      padding: 10px 18px;
-      border-radius: 10px;
-      font-weight: 600;
-      border: none;
-      cursor: pointer;
-    }
-
-    .btn:hover {
-      background: var(--secondary);
-    }
-
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-      gap: 16px;
-    }
-
-    .card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 20px;
-    }
-
-    .card h3 {
-      font-size: 16px;
-      margin-bottom: 6px;
-      color: var(--primary);
-    }
-
-    .card p {
-      font-size: 14px;
-      color: var(--muted);
-    }
-
-    #status-msg {
-      margin-top: 14px;
-      font-size: 14px;
-      color: var(--secondary);
-      font-weight: 500;
-    }
+    body { font-family: system-ui, sans-serif; background: #f8fafc; color: #0f172a; margin: 0; padding: 24px; }
+    .card { max-width: 720px; margin: 0 auto 20px; background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; }
+    h1, h2 { color: #1d4ed8; margin-top: 0; }
+    input, button { padding: 10px 12px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 14px; margin: 4px 0; }
+    button { background: #1d4ed8; color: #fff; border: none; cursor: pointer; font-weight: 600; }
+    button.secondary { background: #475569; }
+    pre { background: #0f172a; color: #e2e8f0; padding: 14px; border-radius: 8px; overflow-x: auto; font-size: 12px; }
   </style>
 </head>
 <body>
-  <header>
-    <div class="brand">EDUCORE</div>
-    <span class="badge">Multi-Tenant Test v0.1</span>
-  </header>
+  <div class="card">
+    <h1>EDUCORE — Auth & RLS Test</h1>
+    <div id="auth-box">
+      <input id="email" type="email" placeholder="User Email" />
+      <input id="password" type="password" placeholder="Password" />
+      <button onclick="signIn()">Sign In</button>
+      <button class="secondary" onclick="signOut()">Sign Out</button>
+    </div>
+    <p id="session-status">Status: Signed out</p>
+  </div>
 
-  <main>
-    <section class="hero">
-      <h1>Unified Education Management Platform</h1>
-      <p>
-        স্কুল, কলেজ ও মাদ্রাসার জন্য Multi-Tenant SaaS টেস্ট পেজ — Cloudflare ও Supabase দিয়ে ধাপে ধাপে তৈরি হচ্ছে।[span_3](start_span)[span_3](end_span)
-      </p>
-      <button class="btn" id="test-btn">Test Environment Status</button>
-      <div id="status-msg"></div>
-    </section>
-
-    <section class="grid">
-      <div class="card">
-        <h3>Tenant Isolation</h3>
-        <p>প্রতিটি প্রতিষ্ঠানের ডেটা আলাদা নিরাপত্তা সীমার মধ্যে থাকবে।[span_4](start_span)[span_4](end_span)</p>
-      </div>
-      <div class="card">
-        <h3>Supabase + RLS</h3>
-        <p>PostgreSQL ও Row-Level Security দিয়ে ডেটা অ্যাক্সেস নিয়ন্ত্রণ করা হবে।[span_5](start_span)[span_5](end_span)</p>
-      </div>
-      <div class="card">
-        <h3>Cloudflare Hosting</h3>
-        <p>দ্রুত ও নিরাপদ ডেলিভারির জন্য Cloudflare ব্যবহার করা হচ্ছে।[span_6](start_span)[span_6](end_span)</p>
-      </div>
-    </section>
-  </main>
+  <div class="card">
+    <h2>RLS & Isolation Checks</h2>
+    <button onclick="fetchTenants()">1. My Tenants</button>
+    <button onclick="fetchStudents()">2. Scoped Students</button>
+    <button onclick="fetchResults()">3. Visible Results</button>
+    <button class="secondary" onclick="testAuditInsert()">4. Insert Audit Log</button>
+    <pre id="output">Ready...</pre>
+  </div>
 
   <script>
-    document.getElementById("test-btn").addEventListener("click", () => {
-      document.getElementById("status-msg").textContent =
-        "UI ready! Next step: connect Supabase & configure RLS policies.";
-    });
+    const SUPABASE_URL = "YOUR_SUPABASE_PROJECT_URL";
+    const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY";
+    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const out = (data) => {
+      document.getElementById("output").textContent = JSON.stringify(data, null, 2);
+    };
+
+    async function refreshSessionStatus() {
+      const { data: { session } } = await sb.auth.getSession();
+      document.getElementById("session-status").textContent = session
+        ? `Status: Signed in as ${session.user.email} (${session.user.id})`
+        : "Status: Signed out";
+    }
+
+    async function signIn() {
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value;
+      const { data, error } = await sb.auth.signInWithPassword({ email, password });
+      await refreshSessionStatus();
+      out(error ? { error: error.message } : { user: data.user.email });
+    }
+
+    async function signOut() {
+      await sb.auth.signOut();
+      await refreshSessionStatus();
+      out({ signedOut: true });
+    }
+
+    async function fetchTenants() {
+      const { data, error } = await sb.from("tenants").select("*");
+      out(error ? { error: error.message } : data);
+    }
+
+    async function fetchStudents() {
+      const { data, error } = await sb.from("students").select("*");
+      out(error ? { error: error.message } : data);
+    }
+
+    async function fetchResults() {
+      const { data, error } = await sb.from("exam_results").select("*");
+      out(error ? { error: error.message } : data);
+    }
+
+    async function testAuditInsert() {
+      const { data: { user } } = await sb.auth.getUser();
+      if (!user) return out({ error: "Sign in first" });
+
+      // উদাহরণস্বরূপ North Education Group-এর tenant_id ও institution_id ব্যবহার করা হয়েছে
+      const { data, error } = await sb.from("audit_logs").insert({
+        tenant_id: "11111111-1111-1111-1111-111111111111",
+        institution_id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+        actor_user_id: user.id,
+        action: "test_view",
+        entity_name: "students",
+        metadata: { source: "rls_test_page" }
+      }).select();
+
+      out(error ? { error: error.message } : data);
+    }
+
+    refreshSessionStatus();
   </script>
 </body>
-        </html>
+</html>
