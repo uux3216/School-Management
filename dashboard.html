@@ -1,0 +1,1408 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EDUCORE — Unified Education Management Platform</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+Bengali:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --primary: #2563EB;
+      --secondary: #1D4ED8;
+      --success: #16A34A;
+      --warning: #F59E0B;
+      --danger: #DC2626;
+      --bg-page: #F8FAFC;
+      --bg-surface: #FFFFFF;
+      --border: #E2E8F0;
+      --text-muted: #64748B;
+      --text-main: #0F172A;
+      --sidebar-w: 250px;
+      --header-h: 64px;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Inter', 'Noto Sans Bengali', system-ui, -apple-system, sans-serif;
+      background: var(--bg-page);
+      color: var(--text-main);
+      margin: 0;
+      padding: 0;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .hidden { display: none !important; }
+
+    /* Auth Screen */
+    .auth-wrapper {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      background: linear-gradient(135deg, #EFF6FF 0%, #F8FAFC 100%);
+    }
+    .auth-card {
+      width: 100%;
+      max-width: 430px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 28px;
+      box-shadow: 0 4px 20px rgba(15, 23, 42, 0.05);
+    }
+    .brand-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      font-size: 20px;
+      color: var(--primary);
+      margin-bottom: 6px;
+    }
+    .brand-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      background: var(--primary);
+      color: #fff;
+      display: grid;
+      place-items: center;
+      font-weight: 700;
+      font-size: 16px;
+    }
+
+    /* Form Controls */
+    .field { margin-bottom: 14px; }
+    .field label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: var(--text-main); }
+    input, select {
+      width: 100%;
+      height: 44px;
+      padding: 0 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      font-family: inherit;
+      font-size: 14px;
+      background: var(--bg-surface);
+      color: var(--text-main);
+      outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    input:focus, select:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+    }
+    input.input-error {
+      border-color: var(--danger) !important;
+      background: #FEF2F2;
+      box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.12);
+    }
+    .field-error-text {
+      color: var(--danger);
+      font-size: 12px;
+      font-weight: 500;
+      margin-top: 5px;
+      display: none;
+    }
+    .field-error-text.visible { display: block; }
+
+    /* Lockout Countdown Banner */
+    .lockout-box {
+      background: #FEF2F2;
+      border: 1px solid #FCA5A5;
+      border-radius: 12px;
+      padding: 14px;
+      margin-bottom: 16px;
+      text-align: center;
+      display: none;
+    }
+    .lockout-box.visible { display: block; }
+    .lockout-title {
+      color: var(--danger);
+      font-weight: 700;
+      font-size: 14px;
+      margin-bottom: 6px;
+    }
+    .lockout-timer {
+      font-size: 26px;
+      font-weight: 700;
+      color: #991B1B;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.04em;
+      margin: 4px 0;
+    }
+    .lockout-sub {
+      font-size: 12px;
+      color: #7F1D1D;
+    }
+
+    button {
+      height: 42px;
+      padding: 0 16px;
+      border-radius: 10px;
+      border: none;
+      background: var(--primary);
+      color: #fff;
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: background 0.15s, opacity 0.15s;
+    }
+    button:hover:not(:disabled) { background: var(--secondary); }
+    button:disabled { opacity: 0.55; cursor: not-allowed; }
+    button.btn-full { width: 100%; }
+    button.btn-outline {
+      background: var(--bg-surface);
+      color: var(--text-main);
+      border: 1px solid var(--border);
+    }
+    button.btn-outline:hover:not(:disabled) { background: #F1F5F9; }
+    button.btn-sm {
+      height: 32px;
+      padding: 0 10px;
+      font-size: 12px;
+      border-radius: 8px;
+    }
+
+    /* App Shell Layout */
+    .app-shell { display: flex; min-height: 100vh; }
+
+    /* Sidebar (250px Desktop) */
+    .sidebar {
+      width: var(--sidebar-w);
+      background: var(--bg-surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      z-index: 40;
+      transition: transform 0.25s ease;
+    }
+    .sidebar-header {
+      height: var(--header-h);
+      padding: 0 18px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .sidebar-nav {
+      flex: 1;
+      overflow-y: auto;
+      padding: 14px 12px;
+    }
+    .nav-group-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      padding: 10px 10px 6px;
+    }
+    .nav-item {
+      width: 100%;
+      height: 40px;
+      justify-content: flex-start;
+      background: transparent;
+      color: var(--text-main);
+      font-weight: 500;
+      padding: 0 12px;
+      border-radius: 10px;
+      margin-bottom: 4px;
+    }
+    .nav-item:hover { background: #EFF6FF; color: var(--primary); }
+    .nav-item.active {
+      background: #EFF6FF;
+      color: var(--primary);
+      font-weight: 600;
+    }
+    .sidebar-footer {
+      padding: 12px;
+      border-top: 1px solid var(--border);
+    }
+
+    /* Main Content Area */
+    .main-area {
+      flex: 1;
+      margin-left: var(--sidebar-w);
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    /* Top Header (64px) */
+    .top-header {
+      height: var(--header-h);
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 30;
+    }
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex: 1;
+      min-width: 0;
+    }
+    .menu-toggle {
+      display: none;
+      width: 40px;
+      padding: 0;
+    }
+    .header-search {
+      max-width: 340px;
+      height: 38px;
+      background: var(--bg-page);
+    }
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .role-pill {
+      padding: 5px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      background: #DBEAFE;
+      color: var(--secondary);
+      white-space: nowrap;
+    }
+
+    /* Page Content */
+    .content-body {
+      padding: 20px;
+      max-width: 1200px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    .card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 18px;
+      margin-bottom: 16px;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+      min-width: 0;
+    }
+    .card-header {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .card-title {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    /* Stat Cards */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+    .stat-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .stat-label { font-size: 13px; color: var(--text-muted); font-weight: 500; }
+    .stat-value { font-size: 22px; font-weight: 700; color: var(--text-main); }
+    .stat-sub { font-size: 12px; color: var(--primary); font-weight: 500; }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+    .toolbar select { max-width: 320px; }
+
+    /* Tables */
+    .table-wrap {
+      width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      min-width: 560px;
+    }
+    th, td {
+      padding: 10px 12px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+    th {
+      background: var(--bg-page);
+      color: var(--text-muted);
+      font-weight: 600;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #F8FAFC; }
+
+    /* Popup Marksheet Modal */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.55);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      z-index: 60;
+    }
+    .modal-dialog {
+      width: 100%;
+      max-width: 780px;
+      max-height: 92vh;
+      overflow-y: auto;
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: 0 20px 45px rgba(15, 23, 42, 0.22);
+    }
+    .modal-header {
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      background: #EFF6FF;
+      border-radius: 16px 16px 0 0;
+    }
+    .modal-body {
+      padding: 18px;
+    }
+    .modal-footer {
+      padding: 14px 20px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 10px;
+      background: var(--bg-page);
+      border-radius: 0 0 16px 16px;
+    }
+
+    /* Board-style Marksheet Sheet */
+    .sheet-header-bar {
+      background: var(--primary);
+      color: #fff;
+      padding: 12px 16px;
+      border-radius: 10px 10px 0 0;
+      text-align: center;
+    }
+    .sheet-title-center {
+      text-align: center;
+      padding: 12px 8px;
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text-main);
+      border: 1px solid var(--border);
+      border-top: none;
+      margin-bottom: 14px;
+    }
+    .summary-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      min-width: 100%;
+      margin-bottom: 16px;
+    }
+    .summary-table th.sec-head {
+      background: var(--primary);
+      color: #fff;
+      text-align: left;
+      font-size: 13px;
+      padding: 9px 12px;
+      text-transform: none;
+    }
+    .summary-table td {
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      white-space: normal;
+    }
+    .summary-table td.lbl {
+      font-weight: 600;
+      color: var(--text-muted);
+      background: #F8FAFC;
+      width: 18%;
+    }
+    .summary-table td.val {
+      font-weight: 700;
+      color: var(--text-main);
+      width: 32%;
+    }
+    .marks-sheet-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      min-width: 520px;
+    }
+    .marks-sheet-table th {
+      background: var(--primary);
+      color: #fff;
+      padding: 9px 10px;
+      border: 1px solid var(--secondary);
+      text-transform: none;
+      font-size: 12.5px;
+    }
+    .marks-sheet-table td {
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      white-space: nowrap;
+    }
+    .marks-sheet-table tfoot td {
+      background: #EFF6FF;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+    .sheet-footer-note {
+      margin-top: 16px;
+      padding-top: 10px;
+      border-top: 1px dashed #CBD5E1;
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    /* Alerts */
+    .alert {
+      padding: 12px 14px;
+      border-radius: 10px;
+      font-size: 13px;
+      margin-bottom: 14px;
+      display: none;
+      line-height: 1.5;
+    }
+    .alert-danger { background: #FEF2F2; color: var(--danger); border: 1px solid #FECACA; }
+    .alert-success { background: #F0FDF4; color: var(--success); border: 1px solid #BBF7D0; }
+    .muted { color: var(--text-muted); font-size: 13px; }
+
+    /* Mobile Bottom Navigation & Drawer Overlay */
+    .drawer-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.45);
+      z-index: 35;
+    }
+    .drawer-backdrop.open { display: block; }
+
+    .bottom-nav {
+      display: none;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 60px;
+      background: var(--bg-surface);
+      border-top: 1px solid var(--border);
+      z-index: 30;
+      justify-content: space-around;
+      align-items: center;
+    }
+    .bottom-nav button {
+      background: transparent;
+      color: var(--text-muted);
+      flex-direction: column;
+      gap: 2px;
+      font-size: 11px;
+      height: 52px;
+      padding: 4px 8px;
+    }
+    .bottom-nav button.active { color: var(--primary); font-weight: 700; }
+
+    @media (max-width: 1023px) {
+      .sidebar { transform: translateX(-100%); }
+      .sidebar.open { transform: translateX(0); }
+      .main-area { margin-left: 0; }
+      .menu-toggle { display: inline-flex; }
+    }
+    @media (max-width: 767px) {
+      .content-body { padding: 14px 14px 76px; }
+      .top-header { padding: 0 12px; }
+      .header-search { max-width: 180px; font-size: 13px; }
+      .bottom-nav { display: flex; }
+      .summary-table td.lbl { width: 34%; }
+      .summary-table td.val { width: 66%; }
+    }
+
+    /* Clean Single-Page Print Fix */
+    @media print {
+      @page { margin: 10mm; size: A4 portrait; }
+      html, body {
+        background: #FFFFFF !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        height: auto !important;
+        overflow: visible !important;
+      }
+      #auth-view, #app-view, .drawer-backdrop, .bottom-nav, .modal-header, .modal-footer {
+        display: none !important;
+      }
+      #result-modal {
+        display: block !important;
+        position: static !important;
+        background: #FFFFFF !important;
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+      .modal-dialog {
+        max-width: 100% !important;
+        max-height: none !important;
+        overflow: visible !important;
+        border: none !important;
+        box-shadow: none !important;
+        margin: 0 !important;
+      }
+      .modal-body { padding: 0 !important; }
+      .table-wrap { overflow: visible !important; border: none !important; }
+      .marks-sheet-table { min-width: 100% !important; }
+      .sheet-header-bar, .summary-table th.sec-head, .marks-sheet-table th, .marks-sheet-table tfoot td {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 1. AUTH SCREEN -->
+  <div id="auth-view" class="auth-wrapper">
+    <div class="auth-card">
+      <div class="brand-logo">
+        <div class="brand-icon">E</div>
+        <span>EDUCORE</span>
+      </div>
+      <p class="muted" style="margin-top:0; margin-bottom:18px;">
+        Unified Multi-Tenant Education Management Platform
+      </p>
+
+      <div id="lockout-box" class="lockout-box">
+        <div class="lockout-title">🔒 অ্যাকাউন্ট সাময়িকভাবে ব্লক করা হয়েছে</div>
+        <div id="lockout-timer" class="lockout-timer">15:00</div>
+        <div id="lockout-sub" class="lockout-sub">অতিরিক্ত ভুল চেষ্টার কারণে ১৫ মিনিটের জন্য লগইন বন্ধ রয়েছে।</div>
+      </div>
+
+      <div id="auth-alert" class="alert alert-danger"></div>
+
+      <div class="field">
+        <label for="login-email">ইমেইল (Email)</label>
+        <input id="login-email" type="email" placeholder="user@institution.edu" oninput="clearFieldErrors()" />
+        <div id="email-error-msg" class="field-error-text"></div>
+      </div>
+      <div class="field">
+        <label for="login-password">পাসওয়ার্ড (Password)</label>
+        <input id="login-password" type="password" placeholder="••••••••" oninput="clearFieldErrors()" />
+        <div id="password-error-msg" class="field-error-text"></div>
+      </div>
+      <button id="btn-signin" class="btn-full" onclick="handleLogin()">সাইন ইন করুন (Sign In)</button>
+
+      <p class="muted" style="margin-top:14px; font-size:12px;">
+        নিরাপত্তা নীতি: ১ মিনিটে ৫ বার ভুল চেষ্টায় ১৫ মিনিটের জন্য লকআউট ও কাউন্টডাউন টাইমার সক্রিয় হবে।
+      </p>
+    </div>
+  </div>
+
+  <!-- 2. DASHBOARD SHELL -->
+  <div id="app-view" class="app-shell hidden">
+    <div id="drawer-backdrop" class="drawer-backdrop" onclick="toggleDrawer(false)"></div>
+
+    <aside id="sidebar" class="sidebar">
+      <div class="sidebar-header">
+        <div class="brand-logo" style="margin:0;">
+          <div class="brand-icon">E</div>
+          <span>EDUCORE</span>
+        </div>
+        <button class="btn-outline menu-toggle" onclick="toggleDrawer(false)" aria-label="Close Menu">✕</button>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="nav-group-title">Overview</div>
+        <button class="nav-item active" data-tab="overview" onclick="switchTab('overview')">📊 Dashboard</button>
+
+        <div class="nav-group-title">Academic</div>
+        <button class="nav-item" data-tab="students" onclick="switchTab('students')">🎓 Students</button>
+
+        <div class="nav-group-title">Operations</div>
+        <button class="nav-item" data-tab="results" onclick="switchTab('results')">📝 Results & Marksheet</button>
+
+        <div id="nav-admin-group" class="nav-group-title">Administration</div>
+        <button id="nav-audit" class="nav-item" data-tab="audit" onclick="switchTab('audit')">🛡️ Audit Logs</button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div id="sidebar-user-email" class="muted" style="margin-bottom:8px; overflow:hidden; text-overflow:ellipsis;"></div>
+        <button class="btn-outline btn-full" onclick="handleLogout()">Sign Out</button>
+      </div>
+    </aside>
+
+    <div class="main-area">
+      <header class="top-header">
+        <div class="header-left">
+          <button class="btn-outline menu-toggle" onclick="toggleDrawer(true)" aria-label="Open Menu">☰</button>
+          <input id="global-search" class="header-search" type="text" placeholder="খুঁজুন (নাম / আইডি)..." oninput="renderAllViews()" />
+        </div>
+        <div class="header-right">
+          <span id="role-pill" class="role-pill">ROLE</span>
+          <button class="btn-outline" style="height:36px; padding:0 12px;" onclick="loadWorkspaceData()">↻ Refresh</button>
+        </div>
+      </header>
+
+      <main class="content-body">
+        <div id="global-alert" class="alert alert-danger"></div>
+        <div id="global-ok" class="alert alert-success"></div>
+
+        <div class="card">
+          <div class="card-header" style="margin-bottom:10px;">
+            <h2 class="card-title">Tenant ও Institution স্কোপ</h2>
+            <span id="scope-badge" class="muted">Multi-Tenant Isolated</span>
+          </div>
+          <div class="toolbar">
+            <select id="membership-select" onchange="onMembershipChange()"></select>
+            <button onclick="logAction('view_dashboard', 'dashboard')">Log Dashboard View</button>
+            <button class="btn-outline" onclick="logAction('export_report_check', 'exam_results')">Log Result Review</button>
+          </div>
+        </div>
+
+        <section id="tab-overview">
+          <div class="stats-grid" id="stats-grid"></div>
+
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title" id="students-card-title">শিক্ষার্থী তালিকা (Students)</h3>
+              <button class="btn-outline" style="height:34px; font-size:12px;" onclick="switchTab('students')">সব দেখুন</button>
+            </div>
+            <div id="overview-students-table"></div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">পরীক্ষার ফলাফল (Exam Results)</h3>
+              <button class="btn-outline" style="height:34px; font-size:12px;" onclick="switchTab('results')">সব দেখুন</button>
+            </div>
+            <div id="overview-results-table"></div>
+          </div>
+        </section>
+
+        <section id="tab-students" class="hidden">
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">Students Directory (Scoped)</h3>
+              <span id="students-count-label" class="muted"></span>
+            </div>
+            <div id="full-students-table"></div>
+          </div>
+        </section>
+
+        <section id="tab-results" class="hidden">
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">Examination & Results</h3>
+              <span id="results-count-label" class="muted"></span>
+            </div>
+            <div id="full-results-table"></div>
+          </div>
+        </section>
+
+        <section id="tab-audit" class="hidden">
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">Security & Activity Audit Logs</h3>
+              <span class="muted">Append-Only Tenant Trail</span>
+            </div>
+            <div id="full-audit-table"></div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <nav class="bottom-nav">
+      <button class="active" data-tab="overview" onclick="switchTab('overview')">📊<span>Home</span></button>
+      <button data-tab="students" onclick="switchTab('students')">🎓<span>Students</span></button>
+      <button data-tab="results" onclick="switchTab('results')">📝<span>Results</span></button>
+      <button id="bottom-nav-audit" data-tab="audit" onclick="switchTab('audit')">🛡️<span>Audit</span></button>
+    </nav>
+  </div>
+
+  <!-- 3. POPUP MARKSHEET MODAL -->
+  <div id="result-modal" class="modal-backdrop hidden" onclick="handleBackdropClick(event)">
+    <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <div class="modal-header">
+        <div>
+          <div style="font-size:11px; font-weight:700; color:var(--primary);">EDUCORE RESULT SHEET</div>
+          <h3 id="modal-title" style="margin:2px 0 0; font-size:16px; color:var(--text-main);">পরীক্ষার মার্কশীট</h3>
+        </div>
+        <button class="btn-outline btn-sm" onclick="closeResultModal()" aria-label="Close Modal">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <div id="marksheet-content"></div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn-outline" onclick="closeResultModal()">বন্ধ করুন</button>
+        <button onclick="printCurrentMarksheet()">🖨️ প্রিন্ট করুন (Print)</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = "https://vrlvamahvvnlkpklesfw.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_20UsdfiJQqAhQqU4ui8YvQ_D-hHG_xk";
+    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const SQLI_CHAR_REGEX = /['";\\<>`]|--|\/\*|\*\/|\x00/;
+    const SQLI_KEYWORD_REGEX = /\b(union\s+select|drop\s+table|alter\s+table|insert\s+into|delete\s+from|update\s+\w+\s+set|or\s+1=1|and\s+1=1)\b/i;
+    const EMAIL_FORMAT_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+    let currentUser = null;
+    let memberships = [];
+    let activeMembership = null;
+    let studentsData = [];
+    let resultsData = [];
+    let auditData = [];
+    let lockoutInterval = null;
+    let selectedResultRow = null;
+
+    function formatSeconds(sec) {
+      const s = Math.max(0, Number(sec) || 0);
+      const mins = String(Math.floor(s / 60)).padStart(2, "0");
+      const remSecs = String(s % 60).padStart(2, "0");
+      return `${mins}:${remSecs}`;
+    }
+
+    function startLockoutTimer(seconds, message) {
+      stopLockoutTimer();
+      let remaining = Math.max(1, Number(seconds) || 900);
+
+      const box = document.getElementById("lockout-box");
+      const timerEl = document.getElementById("lockout-timer");
+      const subEl = document.getElementById("lockout-sub");
+      const btn = document.getElementById("btn-signin");
+
+      box.classList.add("visible");
+      subEl.textContent = message || "অতিরিক্ত ভুল চেষ্টার কারণে ১৫ মিনিটের জন্য লগইন বন্ধ রয়েছে।";
+      timerEl.textContent = formatSeconds(remaining);
+      btn.disabled = true;
+
+      lockoutInterval = setInterval(() => {
+        remaining -= 1;
+        if (remaining <= 0) {
+          stopLockoutTimer();
+          showAlert("লকআউট সময় শেষ হয়েছে। এখন আপনি আবার সাইন ইন করার চেষ্টা করতে পারেন।", true);
+          return;
+        }
+        timerEl.textContent = formatSeconds(remaining);
+      }, 1000);
+    }
+
+    function stopLockoutTimer() {
+      if (lockoutInterval) {
+        clearInterval(lockoutInterval);
+        lockoutInterval = null;
+      }
+      document.getElementById("lockout-box").classList.remove("visible");
+      document.getElementById("btn-signin").disabled = false;
+    }
+
+    function setFieldError(field, message) {
+      if (field === "email" || field === "both") {
+        document.getElementById("login-email").classList.add("input-error");
+        const em = document.getElementById("email-error-msg");
+        if (message && field === "email") {
+          em.textContent = message;
+          em.classList.add("visible");
+        }
+      }
+      if (field === "password" || field === "both") {
+        document.getElementById("login-password").classList.add("input-error");
+        const pw = document.getElementById("password-error-msg");
+        if (message && field === "password") {
+          pw.textContent = message;
+          pw.classList.add("visible");
+        }
+      }
+    }
+
+    function clearFieldErrors() {
+      document.getElementById("login-email").classList.remove("input-error");
+      document.getElementById("login-password").classList.remove("input-error");
+      document.getElementById("email-error-msg").classList.remove("visible");
+      document.getElementById("password-error-msg").classList.remove("visible");
+      document.getElementById("auth-alert").style.display = "none";
+    }
+
+    function showAlert(msg, isAuth = false) {
+      const el = document.getElementById(isAuth ? "auth-alert" : "global-alert");
+      el.textContent = msg;
+      el.style.display = "block";
+      if (!isAuth) document.getElementById("global-ok").style.display = "none";
+    }
+
+    function showOk(msg) {
+      const el = document.getElementById("global-ok");
+      el.textContent = msg;
+      el.style.display = "block";
+      document.getElementById("global-alert").style.display = "none";
+    }
+
+    function clearMessages() {
+      clearFieldErrors();
+      document.getElementById("global-alert").style.display = "none";
+      document.getElementById("global-ok").style.display = "none";
+    }
+
+    function toggleDrawer(open) {
+      document.getElementById("sidebar").classList.toggle("open", open);
+      document.getElementById("drawer-backdrop").classList.toggle("open", open);
+    }
+
+    function switchTab(tabName) {
+      ["overview", "students", "results", "audit"].forEach(t => {
+        document.getElementById(`tab-${t}`).classList.toggle("hidden", t !== tabName);
+      });
+      document.querySelectorAll("[data-tab]").forEach(btn => {
+        btn.classList.toggle("active", btn.getAttribute("data-tab") === tabName);
+      });
+      toggleDrawer(false);
+    }
+
+    function sanitizeSearch(raw) {
+      return String(raw ?? "")
+        .replace(/['";\\<>`]/g, "")
+        .replace(/--+/g, "-")
+        .replace(/\/\*|\*\//g, "")
+        .trim()
+        .toLowerCase();
+    }
+
+    function escapeHtml(val) {
+      return String(val ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function formatCellValue(key, val) {
+      if (val === null || val === undefined) return "-";
+      if (typeof val === "object") return JSON.stringify(val);
+      const str = String(val);
+      if ((key === "id" || key.endsWith("_id") || key.endsWith("_uid")) && str.length > 18) {
+        return `${str.slice(0, 8)}…${str.slice(-4)}`;
+      }
+      return str;
+    }
+
+    async function handleLogin() {
+      clearMessages();
+      const email = document.getElementById("login-email").value.trim().toLowerCase();
+      const password = document.getElementById("login-password").value;
+
+      if (!email && !password) {
+        setFieldError("email", "ইমেইল ঘরটি খালি রাখা যাবে না।");
+        setFieldError("password", "পাসওয়ার্ড ঘরটি খালি রাখা যাবে না।");
+        return showAlert("ইমেইল এবং পাসওয়ার্ড দুটোই দিন।", true);
+      }
+
+      if (!email) {
+        setFieldError("email", "সঠিক ইমেইল ঠিকানা লিখুন।");
+        return showAlert("ইমেইল ঠিকানা দেওয়া হয়নি।", true);
+      }
+      if (!EMAIL_FORMAT_REGEX.test(email)) {
+        setFieldError("email", "ইমেইল ফরম্যাট সঠিক নয় (যেমন: name@school.edu)।");
+        return showAlert("ইমেইল ঠিকানাটি ভুল ফরম্যাটে রয়েছে।", true);
+      }
+      if (SQLI_CHAR_REGEX.test(email) || SQLI_KEYWORD_REGEX.test(email)) {
+        setFieldError("email", "ইমেইলে নিষিদ্ধ স্পেশাল ক্যারেক্টার পাওয়া গেছে।");
+        return showAlert("নিরাপত্তাজনিত কারণে অবৈধ ক্যারেক্টার ব্লক করা হয়েছে।", true);
+      }
+
+      if (!password) {
+        setFieldError("password", "পাসওয়ার্ড লিখুন।");
+        return showAlert("পাসওয়ার্ড দেওয়া হয়নি।", true);
+      }
+      if (password.length < 6) {
+        setFieldError("password", "পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে।");
+        return showAlert("পাসওয়ার্ডটি সঠিক নয় (কমপক্ষে ৬ অক্ষর প্রয়োজন)।", true);
+      }
+
+      const { data: preCheck, error: preErr } = await sb.rpc("check_login_blocked", {
+        p_identifier: email
+      });
+      if (preErr) return showAlert("গার্ড চেক ত্রুটি: " + preErr.message, true);
+      if (preCheck?.blocked) {
+        startLockoutTimer(preCheck.retry_after_seconds, preCheck.message);
+        return;
+      }
+
+      const { error } = await sb.auth.signInWithPassword({ email, password });
+      if (error) {
+        const { data: guardRes } = await sb.rpc("handle_login_guard", {
+          p_identifier: email,
+          p_is_success: false
+        });
+
+        setFieldError("both");
+
+        if (guardRes?.blocked) {
+          startLockoutTimer(guardRes.retry_after_seconds, guardRes.message);
+          return;
+        }
+
+        const remText = guardRes?.remaining_attempts !== undefined
+          ? ` (আর ${guardRes.remaining_attempts} বার চেষ্টা বাকি)`
+          : "";
+        return showAlert(`ইমেইল অথবা পাসওয়ার্ড ভুল হয়েছে। অনুগ্রহ করে দুটোই যাচাই করে আবার চেষ্টা করুন।${remText}`, true);
+      }
+
+      await sb.rpc("handle_login_guard", {
+        p_identifier: email,
+        p_is_success: true
+      });
+
+      stopLockoutTimer();
+      await initSession();
+    }
+
+    async function handleLogout() {
+      await sb.auth.signOut();
+      currentUser = null;
+      memberships = [];
+      activeMembership = null;
+      closeResultModal();
+      stopLockoutTimer();
+      document.getElementById("app-view").classList.add("hidden");
+      document.getElementById("auth-view").classList.remove("hidden");
+      clearMessages();
+    }
+
+    async function initSession() {
+      const { data: { session } } = await sb.auth.getSession();
+      if (!session) return;
+
+      currentUser = session.user;
+      document.getElementById("sidebar-user-email").textContent = currentUser.email;
+      document.getElementById("auth-view").classList.add("hidden");
+      document.getElementById("app-view").classList.remove("hidden");
+
+      await loadMemberships();
+    }
+
+    async function loadMemberships() {
+      const { data, error } = await sb
+        .from("tenant_memberships")
+        .select("*")
+        .eq("user_id", currentUser.id);
+
+      if (error) return showAlert("Membership লোড করতে সমস্যা: " + error.message);
+
+      memberships = (data || []).filter(m => m.is_active !== false);
+      const sel = document.getElementById("membership-select");
+      sel.innerHTML = "";
+
+      if (memberships.length === 0) {
+        return showAlert("এই ইউজারের কোনো সক্রিয় Tenant Membership পাওয়া যায়নি।");
+      }
+
+      memberships.forEach((m, idx) => {
+        const opt = document.createElement("option");
+        opt.value = idx;
+        const roleLabel = (m.role || "member").toUpperCase();
+        const instShort = m.institution_id ? m.institution_id.slice(0, 8) : "All Institutions";
+        opt.textContent = `${roleLabel} — Tenant ${m.tenant_id.slice(0, 8)} (${instShort})`;
+        sel.appendChild(opt);
+      });
+
+      sel.value = "0";
+      await onMembershipChange();
+    }
+
+    async function onMembershipChange() {
+      const idx = Number(document.getElementById("membership-select").value || 0);
+      activeMembership = memberships[idx] || null;
+      if (!activeMembership) return;
+
+      const role = String(activeMembership.role || "member").toLowerCase();
+      document.getElementById("role-pill").textContent = role.toUpperCase();
+
+      const isManagement = ["tenant_owner", "institution_admin", "admin", "teacher", "staff", "accountant"].includes(role);
+      document.getElementById("nav-admin-group").classList.toggle("hidden", !isManagement);
+      document.getElementById("nav-audit").classList.toggle("hidden", !isManagement);
+      document.getElementById("bottom-nav-audit").classList.toggle("hidden", !isManagement);
+
+      document.getElementById("students-card-title").textContent = isManagement
+        ? "শিক্ষার্থী তালিকা (Students)"
+        : "আমার সন্তান / শিক্ষার্থী (My Children)";
+
+      document.getElementById("scope-badge").textContent =
+        `Tenant: ${activeMembership.tenant_id.slice(0, 8)}… | Inst: ${activeMembership.institution_id ? activeMembership.institution_id.slice(0, 8) + "…" : "All"}`;
+
+      await loadWorkspaceData();
+    }
+
+    async function loadWorkspaceData() {
+      if (!activeMembership) return;
+
+      let stQuery = sb.from("students").select("*").eq("tenant_id", activeMembership.tenant_id);
+      let resQuery = sb.from("exam_results").select("*").eq("tenant_id", activeMembership.tenant_id);
+      let audQuery = sb.from("audit_logs").select("*").eq("tenant_id", activeMembership.tenant_id).limit(20);
+
+      if (activeMembership.institution_id) {
+        stQuery = stQuery.eq("institution_id", activeMembership.institution_id);
+        resQuery = resQuery.eq("institution_id", activeMembership.institution_id);
+      }
+
+      const [stResp, resResp, audResp] = await Promise.all([stQuery, resQuery, audQuery]);
+
+      studentsData = stResp.error ? [] : (stResp.data || []);
+      resultsData = resResp.error ? [] : (resResp.data || []);
+      auditData = audResp.error ? [] : (audResp.data || []);
+
+      if (stResp.error) showAlert("Students Error: " + stResp.error.message);
+      if (resResp.error) showAlert("Exam Results Error: " + resResp.error.message);
+
+      renderAllViews();
+    }
+
+    function buildTable(rows, preferredCols = [], maxCols = 6, options = {}) {
+      if (!rows || rows.length === 0) {
+        return `<p class="muted" style="margin:6px 0;">কোনো ডেটা পাওয়া যায়নি।</p>`;
+      }
+      const allKeys = Object.keys(rows[0]);
+      const cols = [
+        ...preferredCols.filter(k => allKeys.includes(k)),
+        ...allKeys.filter(k => !preferredCols.includes(k))
+      ].slice(0, maxCols);
+
+      const hasAction = Boolean(options.withViewResult);
+      const thead = `<tr>${cols.map(c => `<th>${escapeHtml(c)}</th>`).join("")}${hasAction ? `<th>Action</th>` : ""}</tr>`;
+
+      const tbody = rows.map((r, idx) => {
+        const rowId = r.id ?? idx;
+        const cells = cols.map(c =>
+          `<td title="${escapeHtml(r[c] ?? "")}">${escapeHtml(formatCellValue(c, r[c]))}</td>`
+        ).join("");
+        const actionCell = hasAction
+          ? `<td><button type="button" class="btn-sm" onclick="openResultModalById('${escapeHtml(rowId)}', ${idx})">View Result</button></td>`
+          : "";
+        return `<tr>${cells}${actionCell}</tr>`;
+      }).join("");
+
+      return `<div class="table-wrap"><table><thead>${thead}</thead><tbody>${tbody}</tbody></table></div>`;
+    }
+
+    async function openResultModalById(rowId, fallbackIdx) {
+      const found = resultsData.find(r => String(r.id) === String(rowId)) || resultsData[fallbackIdx];
+      if (!found) return;
+      selectedResultRow = found;
+
+      const matchedStudent =
+        studentsData.find(s =>
+          (found.student_id && s.id === found.student_id) ||
+          (found.enrollment_student_id && s.id === found.enrollment_student_id)
+        ) || studentsData[0] || {};
+
+      const studentName = matchedStudent.full_name || matchedStudent.name || found.student_name || "শিক্ষার্থী";
+      const studentUid = matchedStudent.student_uid || matchedStudent.roll_no || (matchedStudent.id ? String(matchedStudent.id).slice(0, 8) : "-");
+      const examName = found.exam_name || found.title || found.exam_title || "পরীক্ষার ফলাফল";
+      const statusText = found.is_published === false ? "Unpublished" : (found.status || "Published");
+
+      document.getElementById("modal-title").textContent = `${examName} — Result Sheet`;
+      document.getElementById("marksheet-content").innerHTML = `<p class="muted">মার্কশীট লোড হচ্ছে...</p>`;
+      document.getElementById("result-modal").classList.remove("hidden");
+
+      // নতুন exam_subject_marks টেবিল থেকে বিষয়ভিত্তিক CQ, MCQ, Practical লোড
+      let subjectMarks = [];
+      if (found.id) {
+        const { data: smData, error: smErr } = await sb
+          .from("exam_subject_marks")
+          .select("*")
+          .eq("exam_result_id", found.id)
+          .order("subject_order", { ascending: true });
+
+        if (!smErr && Array.isArray(smData)) {
+          subjectMarks = smData;
+        }
+      }
+
+      let grandTotalObtained = 0;
+      let grandTotalFull = 0;
+      let rowsHtml = "";
+
+      if (subjectMarks.length > 0) {
+        rowsHtml = subjectMarks.map((sub, idx) => {
+          const cq = Number(sub.cq_marks ?? 0);
+          const mcq = Number(sub.mcq_marks ?? 0);
+          const prac = Number(sub.practical_marks ?? 0);
+          const tot = Number(sub.total_marks ?? (cq + mcq + prac));
+          const full = Number(sub.full_marks ?? (Number(sub.max_cq ?? 0) + Number(sub.max_mcq ?? 0) + Number(sub.max_practical ?? 0)));
+
+          grandTotalObtained += tot;
+          grandTotalFull += full;
+
+          const cqText = sub.max_cq ? `${cq}/${sub.max_cq}` : `${cq}`;
+          const mcqText = sub.max_mcq ? `${mcq}/${sub.max_mcq}` : `${mcq}`;
+          const pracText = Number(sub.max_practical ?? 0) > 0 || prac > 0
+            ? (sub.max_practical ? `${prac}/${sub.max_practical}` : `${prac}`)
+            : "-";
+
+          return `
+            <tr>
+              <td>${escapeHtml(sub.subject_order ?? (idx + 1))}</td>
+              <td style="font-weight:600;">${escapeHtml(sub.subject_name)}</td>
+              <td>${escapeHtml(cqText)}</td>
+              <td>${escapeHtml(mcqText)}</td>
+              <td>${escapeHtml(pracText)}</td>
+              <td style="font-weight:700;">${escapeHtml(tot)}${full ? ` / ${escapeHtml(full)}` : ""}</td>
+              <td style="font-weight:700; color:var(--primary);">${escapeHtml(sub.grade ?? "-")}</td>
+            </tr>
+          `;
+        }).join("");
+      } else {
+        // Fallback: যদি এখনো exam_subject_marks-এ সাবজেক্ট এন্ট্রি না থাকে
+        const cq = found.cq_marks ?? "-";
+        const mcq = found.mcq_marks ?? "-";
+        const prac = found.practical_marks ?? "-";
+        const tot = found.total_marks ?? found.marks ?? "-";
+        grandTotalObtained = Number(tot) || 0;
+
+        rowsHtml = `
+          <tr>
+            <td>1</td>
+            <td style="font-weight:600;">${escapeHtml(found.subject || examName)}</td>
+            <td>${escapeHtml(cq)}</td>
+            <td>${escapeHtml(mcq)}</td>
+            <td>${escapeHtml(prac)}</td>
+            <td style="font-weight:700;">${escapeHtml(tot)}</td>
+            <td style="font-weight:700; color:var(--primary);">${escapeHtml(found.grade ?? "-")}</td>
+          </tr>
+        `;
+      }
+
+      const displayTotal = subjectMarks.length > 0
+        ? `${grandTotalObtained}${grandTotalFull ? ` / ${grandTotalFull}` : ""}`
+        : (found.total_marks ?? found.marks ?? "-");
+
+      const displayGpa = found.gpa ?? "-";
+      const displayGrade = found.grade ?? "-";
+
+      document.getElementById("marksheet-content").innerHTML = `
+        <div class="sheet-header-bar">
+          <div style="font-size:17px; font-weight:700;">EDUCORE EDUCATION PLATFORM</div>
+          <div style="font-size:12px; opacity:0.92;">ACADEMIC EXAMINATION & RESULT STATEMENT</div>
+        </div>
+
+        <div class="sheet-title-center">
+          Result of ${escapeHtml(examName)}
+        </div>
+
+        <table class="summary-table">
+          <thead>
+            <tr>
+              <th class="sec-head" colspan="4">Student Information Summary</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="lbl">Student ID / Roll</td>
+              <td class="val">${escapeHtml(studentUid)}</td>
+              <td class="lbl">Result Status</td>
+              <td class="val">${escapeHtml(statusText)}</td>
+            </tr>
+            <tr>
+              <td class="lbl">Name of Student</td>
+              <td class="val">${escapeHtml(studentName)}</td>
+              <td class="lbl">Examination</td>
+              <td class="val">${escapeHtml(examName)}</td>
+            </tr>
+            <tr>
+              <td class="lbl">GPA</td>
+              <td class="val">${escapeHtml(displayGpa)}</td>
+              <td class="lbl">Total Marks</td>
+              <td class="val">${escapeHtml(displayTotal)}</td>
+            </tr>
+            <tr>
+              <td class="lbl">Total Subjects</td>
+              <td class="val">${subjectMarks.length > 0 ? subjectMarks.length : 1}</td>
+              <td class="lbl">Overall Grade</td>
+              <td class="val">${escapeHtml(displayGrade)}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="table-wrap">
+          <table class="marks-sheet-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Subject Name</th>
+                <th>CQ</th>
+                <th>MCQ</th>
+                <th>Practical</th>
+                <th>Total</th>
+                <th>Grade</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rowsHtml}
+            </tbody>
+            ${subjectMarks.length > 0 ? `
+              <tfoot>
+                <tr>
+                  <td colspan="5" style="text-align:right;">Grand Total:</td>
+                  <td>${escapeHtml(displayTotal)}</td>
+                  <td>${escapeHtml(displayGrade)}</td>
+                </tr>
+              </tfoot>
+            ` : ""}
+          </table>
+        </div>
+
+        <div class="sheet-footer-note">
+          <div>Published Date: ${escapeHtml(new Date().toLocaleDateString("bn-BD"))}</div>
+          <div>EDUCORE Verified Transcript</div>
+        </div>
+      `;
+    }
+
+    function closeResultModal() {
+      document.getElementById("result-modal").classList.add("hidden");
+      selectedResultRow = null;
+    }
+
+    function handleBackdropClick(e) {
+      if (e.target.id === "result-modal") {
+        closeResultModal();
+      }
+    }
+
+    function printCurrentMarksheet() {
+      if (selectedResultRow) {
+        logAction("print_marksheet_modal", "exam_results");
+      }
+      window.print();
+    }
+
+    function renderAllViews() {
+      const q = sanitizeSearch(document.getElementById("global-search").value);
+      const filterFn = (row) => !q || Object.values(row).some(v => String(v ?? "").toLowerCase().includes(q));
+
+      const filteredStudents = studentsData.filter(filterFn);
+      const filteredResults = resultsData.filter(filterFn);
+      const role = String(activeMembership?.role || "").toUpperCase();
+
+      const firstStudentName = studentsData[0]?.full_name || studentsData[0]?.name || "-";
+      document.getElementById("stats-grid").innerHTML = `
+        <div class="stat-card">
+          <div class="stat-label">সক্রিয় রোল (Active Role)</div>
+          <div class="stat-value" style="font-size:18px; color:var(--primary);">${escapeHtml(role)}</div>
+          <div class="stat-sub">Tenant Isolated Access</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">শিক্ষার্থী সংখ্যা (Students)</div>
+          <div class="stat-value">${filteredStudents.length}</div>
+          <div class="stat-sub">${escapeHtml(firstStudentName)}</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">পরীক্ষার ফলাফল (Results)</div>
+          <div class="stat-value">${filteredResults.length}</div>
+          <div class="stat-sub">${escapeHtml(resultsData[0]?.exam_name || "সর্বশেষ রেকর্ড")}</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">অডিট লগ (Audit Entries)</div>
+          <div class="stat-value">${auditData.length}</div>
+          <div class="stat-sub">RLS Protected Trail</div>
+        </div>
+      `;
+
+      const studentCols = ["full_name", "name", "student_uid", "roll_no", "institution_id"];
+      const resultCols = ["exam_name", "total_marks", "gpa", "grade", "enrollment_id"];
+      const auditCols = ["action", "entity_name", "actor_user_id", "created_at"];
+
+      document.getElementById("overview-students-table").innerHTML = buildTable(filteredStudents.slice(0, 5), studentCols, 5);
+      document.getElementById("overview-results-table").innerHTML = buildTable(
+        filteredResults.slice(0, 5),
+        resultCols,
+        5,
+        { withViewResult: true }
+      );
+
+      document.getElementById("students-count-label").textContent = `মোট ${filteredStudents.length} জন`;
+      document.getElementById("results-count-label").textContent = `মোট ${filteredResults.length} টি রেকর্ড`;
+
+      document.getElementById("full-students-table").innerHTML = buildTable(filteredStudents, studentCols, 7);
+      document.getElementById("full-results-table").innerHTML = buildTable(
+        filteredResults,
+        resultCols,
+        6,
+        { withViewResult: true }
+      );
+      document.getElementById("full-audit-table").innerHTML = buildTable(auditData, auditCols, 6);
+    }
+
+    async function logAction(action, entityName) {
+      if (!currentUser || !activeMembership) return;
+      const { error } = await sb.from("audit_logs").insert({
+        tenant_id: activeMembership.tenant_id,
+        institution_id: activeMembership.institution_id ?? null,
+        actor_user_id: currentUser.id,
+        action,
+        entity_name: entityName,
+        metadata: { role: activeMembership.role, ui: "educore_saas_dashboard" }
+      });
+
+      if (error) {
+        showAlert("Audit Log Insert ব্যর্থ: " + error.message);
+      } else {
+        showOk(`Audit Log সংরক্ষিত হয়েছে: ${action}`);
+        await loadWorkspaceData();
+      }
+    }
+
+    initSession();
+  </script>
+</body>
+  </html>
