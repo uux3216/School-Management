@@ -333,6 +333,49 @@
     .stat-value { font-size: 22px; font-weight: 700; color: var(--text-main); }
     .stat-sub { font-size: 12px; color: var(--primary); font-weight: 500; }
 
+    /* Marksheet Summary Card (Guardian / Student) */
+    .marksheet-card {
+      border: 1px solid #BFDBFE;
+      background: linear-gradient(180deg, #EFF6FF 0%, #FFFFFF 45%);
+      border-radius: 16px;
+      padding: 18px;
+      margin-bottom: 16px;
+    }
+    .marksheet-top {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      padding-bottom: 14px;
+      border-bottom: 1px dashed #BFDBFE;
+      margin-bottom: 14px;
+    }
+    .marksheet-student-name {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text-main);
+      margin: 0 0 4px;
+    }
+    .marksheet-meta {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+    .marksheet-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .ms-chip {
+      background: #FFFFFF;
+      border: 1px solid #DBEAFE;
+      border-radius: 10px;
+      padding: 8px 12px;
+      min-width: 110px;
+    }
+    .ms-chip-label { font-size: 11px; color: var(--text-muted); }
+    .ms-chip-val { font-size: 15px; font-weight: 700; color: var(--primary); }
+
     .toolbar {
       display: flex;
       flex-wrap: wrap;
@@ -431,6 +474,20 @@
       .header-search { max-width: 180px; font-size: 13px; }
       .bottom-nav { display: flex; }
     }
+
+    /* Print / PDF Marksheet Styling */
+    @media print {
+      .sidebar, .top-header, .bottom-nav, .drawer-backdrop, .no-print, #global-alert, #global-ok {
+        display: none !important;
+      }
+      .main-area { margin-left: 0 !important; }
+      .content-body { padding: 0 !important; max-width: 100% !important; }
+      .card, .marksheet-card {
+        box-shadow: none !important;
+        border: 1px solid #CBD5E1 !important;
+        break-inside: avoid;
+      }
+    }
   </style>
 </head>
 <body>
@@ -446,7 +503,6 @@
         Unified Multi-Tenant Education Management Platform
       </p>
 
-      <!-- Live Lockout Countdown Banner -->
       <div id="lockout-box" class="lockout-box">
         <div class="lockout-title">🔒 অ্যাকাউন্ট সাময়িকভাবে ব্লক করা হয়েছে</div>
         <div id="lockout-timer" class="lockout-timer">15:00</div>
@@ -522,7 +578,8 @@
         <div id="global-alert" class="alert alert-danger"></div>
         <div id="global-ok" class="alert alert-success"></div>
 
-        <div class="card">
+        <!-- Tenant / Institution Scope Bar -->
+        <div class="card no-print">
           <div class="card-header" style="margin-bottom:10px;">
             <h2 class="card-title">Tenant ও Institution স্কোপ</h2>
             <span id="scope-badge" class="muted">Multi-Tenant Isolated</span>
@@ -534,13 +591,37 @@
           </div>
         </div>
 
+        <!-- Guardian / Student Marksheet Summary Card -->
+        <div id="marksheet-summary-section" class="marksheet-card hidden">
+          <div class="marksheet-top">
+            <div>
+              <div class="muted" style="font-size:12px; font-weight:600; color:var(--primary);">STUDENT RESULT & MARKSHEET SUMMARY</div>
+              <h3 id="ms-student-name" class="marksheet-student-name">শিক্ষার্থীর নাম</h3>
+              <div id="ms-student-meta" class="marksheet-meta">Student ID: -</div>
+            </div>
+            <div class="marksheet-badges">
+              <div class="ms-chip">
+                <div class="ms-chip-label">মোট পরীক্ষা / বিষয়</div>
+                <div id="ms-total-records" class="ms-chip-val">0</div>
+              </div>
+              <div class="ms-chip">
+                <div class="ms-chip-label">সর্বশেষ মূল্যায়ন</div>
+                <div id="ms-latest-exam" class="ms-chip-val" style="font-size:13px;">-</div>
+              </div>
+              <button class="btn-outline no-print" style="height:44px;" onclick="printMarksheet()">🖨️ Print / PDF</button>
+            </div>
+          </div>
+          <div id="ms-results-table"></div>
+        </div>
+
+        <!-- TAB: OVERVIEW -->
         <section id="tab-overview">
           <div class="stats-grid" id="stats-grid"></div>
 
           <div class="card">
             <div class="card-header">
               <h3 class="card-title" id="students-card-title">শিক্ষার্থী তালিকা (Students)</h3>
-              <button class="btn-outline" style="height:34px; font-size:12px;" onclick="switchTab('students')">সব দেখুন</button>
+              <button class="btn-outline no-print" style="height:34px; font-size:12px;" onclick="switchTab('students')">সব দেখুন</button>
             </div>
             <div id="overview-students-table"></div>
           </div>
@@ -548,12 +629,13 @@
           <div class="card">
             <div class="card-header">
               <h3 class="card-title">পরীক্ষার ফলাফল (Exam Results)</h3>
-              <button class="btn-outline" style="height:34px; font-size:12px;" onclick="switchTab('results')">সব দেখুন</button>
+              <button class="btn-outline no-print" style="height:34px; font-size:12px;" onclick="switchTab('results')">সব দেখুন</button>
             </div>
             <div id="overview-results-table"></div>
           </div>
         </section>
 
+        <!-- TAB: STUDENTS -->
         <section id="tab-students" class="hidden">
           <div class="card">
             <div class="card-header">
@@ -564,6 +646,7 @@
           </div>
         </section>
 
+        <!-- TAB: RESULTS -->
         <section id="tab-results" class="hidden">
           <div class="card">
             <div class="card-header">
@@ -574,6 +657,7 @@
           </div>
         </section>
 
+        <!-- TAB: AUDIT LOGS -->
         <section id="tab-audit" class="hidden">
           <div class="card">
             <div class="card-header">
@@ -746,14 +830,12 @@
       const email = document.getElementById("login-email").value.trim().toLowerCase();
       const password = document.getElementById("login-password").value;
 
-      // ১. দুটোই ফাঁকা কি না যাচাই
       if (!email && !password) {
         setFieldError("email", "ইমেইল ঘরটি খালি রাখা যাবে না।");
         setFieldError("password", "পাসওয়ার্ড ঘরটি খালি রাখা যাবে না।");
         return showAlert("ইমেইল এবং পাসওয়ার্ড দুটোই দিন।", true);
       }
 
-      // ২. শুধু ইমেইল ফাঁকা বা ফরম্যাট ভুল কি না যাচাই
       if (!email) {
         setFieldError("email", "সঠিক ইমেইল ঠিকানা লিখুন।");
         return showAlert("ইমেইল ঠিকানা দেওয়া হয়নি।", true);
@@ -767,7 +849,6 @@
         return showAlert("নিরাপত্তাজনিত কারণে অবৈধ ক্যারেক্টার ব্লক করা হয়েছে।", true);
       }
 
-      // ৩. পাসওয়ার্ড ফাঁকা বা অতি সংক্ষিপ্ত কি না যাচাই
       if (!password) {
         setFieldError("password", "পাসওয়ার্ড লিখুন।");
         return showAlert("পাসওয়ার্ড দেওয়া হয়নি।", true);
@@ -777,7 +858,6 @@
         return showAlert("পাসওয়ার্ডটি সঠিক নয় (কমপক্ষে ৬ অক্ষর প্রয়োজন)।", true);
       }
 
-      // ৪. লগইন করার আগে ব্লক স্ট্যাটাস চেক
       const { data: preCheck, error: preErr } = await sb.rpc("check_login_blocked", {
         p_identifier: email
       });
@@ -787,7 +867,6 @@
         return;
       }
 
-      // ৫. Supabase Auth দিয়ে সাইন ইন
       const { error } = await sb.auth.signInWithPassword({ email, password });
       if (error) {
         const { data: guardRes } = await sb.rpc("handle_login_guard", {
@@ -795,7 +874,6 @@
           p_is_success: false
         });
 
-        // দুটো ফিল্ডেই ভিজ্যুয়াল এরর হাইলাইট (ইমেইল বা পাসওয়ার্ড ভুল)
         setFieldError("both");
 
         if (guardRes?.blocked) {
@@ -824,6 +902,7 @@
       memberships = [];
       activeMembership = null;
       stopLockoutTimer();
+      document.getElementById("marksheet-summary-section").classList.add("hidden");
       document.getElementById("app-view").classList.add("hidden");
       document.getElementById("auth-view").classList.remove("hidden");
       clearMessages();
@@ -879,9 +958,12 @@
       document.getElementById("role-pill").textContent = role.toUpperCase();
 
       const isManagement = ["tenant_owner", "institution_admin", "admin", "teacher", "staff", "accountant"].includes(role);
+      const isGuardianOrStudent = ["guardian", "student"].includes(role);
+
       document.getElementById("nav-admin-group").classList.toggle("hidden", !isManagement);
       document.getElementById("nav-audit").classList.toggle("hidden", !isManagement);
       document.getElementById("bottom-nav-audit").classList.toggle("hidden", !isManagement);
+      document.getElementById("marksheet-summary-section").classList.toggle("hidden", !isGuardianOrStudent);
 
       document.getElementById("students-card-title").textContent = isManagement
         ? "শিক্ষার্থী তালিকা (Students)"
@@ -935,6 +1017,29 @@
       return `<div class="table-wrap"><table><thead>${thead}</thead><tbody>${tbody}</tbody></table></div>`;
     }
 
+    function renderMarksheetSummary(filteredResults) {
+      const role = String(activeMembership?.role || "").toLowerCase();
+      if (!["guardian", "student"].includes(role)) return;
+
+      const primaryStudent = studentsData[0] || {};
+      const studentName = primaryStudent.full_name || primaryStudent.name || "শিক্ষার্থী";
+      const studentUid = primaryStudent.student_uid || primaryStudent.roll_no || "-";
+      const latestExam = filteredResults[0]?.exam_name || filteredResults[0]?.title || "-";
+
+      document.getElementById("ms-student-name").textContent = studentName;
+      document.getElementById("ms-student-meta").textContent = `Student ID: ${studentUid} | Role: ${role.toUpperCase()}`;
+      document.getElementById("ms-total-records").textContent = String(filteredResults.length);
+      document.getElementById("ms-latest-exam").textContent = latestExam;
+
+      const marksheetCols = ["exam_name", "subject", "marks", "total_marks", "gpa", "grade", "status"];
+      document.getElementById("ms-results-table").innerHTML = buildTable(filteredResults, marksheetCols, 6);
+    }
+
+    function printMarksheet() {
+      logAction("print_marksheet", "exam_results");
+      window.print();
+    }
+
     function renderAllViews() {
       const q = sanitizeSearch(document.getElementById("global-search").value);
       const filterFn = (row) => !q || Object.values(row).some(v => String(v ?? "").toLowerCase().includes(q));
@@ -966,6 +1071,8 @@
           <div class="stat-sub">RLS Protected Trail</div>
         </div>
       `;
+
+      renderMarksheetSummary(filteredResults);
 
       const studentCols = ["full_name", "name", "student_uid", "roll_no", "institution_id"];
       const resultCols = ["exam_name", "subject", "marks", "gpa", "grade", "enrollment_id"];
